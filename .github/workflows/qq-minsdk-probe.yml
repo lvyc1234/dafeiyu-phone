@@ -1,0 +1,56 @@
+name: qq-minsdk-probe
+
+# 临时探测：确认哪些 QQ 安卓版本仍然支持 Android 4.4（minSdkVersion 19）
+on:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Android build-tools
+        run: |
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(ls "${ANDROID_HOME}"/cmdline-tools/*/bin/sdkmanager | head -1)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "build-tools;34.0.0" >/dev/null
+          ls "${ANDROID_HOME}/build-tools"
+
+      - name: Probe apkpure direct links
+        continue-on-error: true
+        run: |
+          BT="$(ls -d "${ANDROID_HOME}"/build-tools/* | sort -V | tail -1)"
+          for v in 8.8.0 8.8.50 8.8.68 8.8.83 8.9.10 8.9.28 8.9.63; do
+            echo "=================== version $v"
+            url="https://d.apkpure.com/b/APK/com.tencent.mobileqq?version=${v}"
+            code=$(curl -sL --max-time 120 -A "Mozilla/5.0 (Linux; Android 10)" \
+              -o "/tmp/qq-${v}.bin" -w '%{http_code}' "$url" || true)
+            size=$(wc -c < "/tmp/qq-${v}.bin" 2>/dev/null || echo 0)
+            echo "http=$code size=$size"
+            if unzip -l "/tmp/qq-${v}.bin" >/dev/null 2>&1; then
+              "$BT/aapt2" dump badging "/tmp/qq-${v}.bin" | grep -E "^package:|^sdkVersion|^targetSdkVersion" || true
+            else
+              head -c 300 "/tmp/qq-${v}.bin" || true
+              echo
+            fi
+          done
+
+      - name: Probe apkcombo list
+        continue-on-error: true
+        run: |
+          curl -sL --max-time 120 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+            "https://apkcombo.com/qq/com.tencent.mobileqq/old-versions/" -o /tmp/list.html || true
+          echo "bytes: $(wc -c < /tmp/list.html)"
+          grep -oE '8\.[0-9]+\.[0-9]+' /tmp/list.html | sort -u | head -40 || true
+          echo "--- android requirement hints"
+          grep -oE 'Android [0-9]+(\.[0-9]+)?' /tmp/list.html | sort | uniq -c | head -20 || true
+
+      - name: Probe apkmirror
+        continue-on-error: true
+        run: |
+          curl -sL --max-time 120 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" \
+            "https://www.apkmirror.com/uploads/?appcategory=qq" -o /tmp/am.html || true
+          echo "bytes: $(wc -c < /tmp/am.html)"
+          grep -oE '8\.[0-9]+\.[0-9]+' /tmp/am.html | sort -u | head -40 || true
