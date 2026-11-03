@@ -8,34 +8,36 @@ jobs:
   probe:
     runs-on: ubuntu-latest
     steps:
-      - name: apkmirror index
-        continue-on-error: true
+      - name: probe sources
         run: |
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
-          curl -sL --max-time 120 -A "$UA" "https://www.apkmirror.com/apk/tencent-mobile-holdings-inc/qq/" -o /tmp/idx.html || true
-          echo "idx bytes: $(wc -c < /tmp/idx.html)"
-          grep -oE 'href="/apk/tencent-mobile-holdings-inc/qq/[^"#?]+"' /tmp/idx.html | sed 's/href="//;s/"$//' | sort -u | head -40 > /tmp/slugs.txt || true
-          cat /tmp/slugs.txt
+          probe() {
+            echo "################ $1"
+            code=$(curl -sL --max-time 90 -A "$UA" -o /tmp/p.out -w '%{http_code}' "$1" || true)
+            echo "http=$code bytes=$(wc -c < /tmp/p.out 2>/dev/null || echo 0)"
+            head -c 200 /tmp/p.out; echo
+          }
+          probe "https://ws75.aptoide.com/api/7/listAppVersions/package_name=com.tencent.mobileqq/limit=20"
+          probe "https://ws57.aptoide.com/api/7/app/get/package_name=com.tencent.mobileqq"
+          probe "https://qq.cn.uptodown.com/android/versions"
+          probe "https://www.apkmirror.com/apk/tencent-mobile-holdings-inc/qq/"
+          probe "https://apkcombo.com/qq/com.tencent.mobileqq/old-versions/"
 
-      - name: apkmirror version pages
+      - name: uptodown versions detail
         continue-on-error: true
         run: |
           UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
-          n=0
-          while read -r slug; do
-            [ -z "$slug" ] && continue
-            n=$((n+1)); [ "$n" -gt 14 ] && break
-            echo "################ $slug"
-            curl -sL --max-time 90 -A "$UA" "https://www.apkmirror.com${slug}" -o /tmp/v.html || true
-            echo "bytes: $(wc -c < /tmp/v.html)"
-            grep -aoE '.{60}(Requires Android|and up|Android [0-9]\.[0-9]).{80}' /tmp/v.html | head -4 || true
-            grep -aoE 'version-name[^<]{0,80}|Android [0-9]+\.[0-9]+' /tmp/v.html | sort -u | head -6 || true
-          done < /tmp/slugs.txt
+          curl -sL --max-time 120 -A "$UA" "https://qq.cn.uptodown.com/android/versions" -o /tmp/ut.html || true
+          echo "bytes: $(wc -c < /tmp/ut.html)"
+          grep -aoE '[0-9]+\.[0-9]+\.[0-9]+|Android [0-9]+\.[0-9]+' /tmp/ut.html | sort -u | head -40 || true
+          grep -aoE '.{80}(Android 4|Android 5).{100}' /tmp/ut.html | head -10 || true
 
-      - name: apkcombo fallback
+      - name: aptoide json
         continue-on-error: true
         run: |
-          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0 Safari/537.36"
-          curl -sL --max-time 120 -A "$UA" "https://apkcombo.com/qq/com.tencent.mobileqq/old-versions/" -o /tmp/c.html || true
-          echo "combo bytes: $(wc -c < /tmp/c.html)"
-          grep -aoE 'Android [0-9]+\.[0-9]+|8\.[0-9]+\.[0-9]+' /tmp/c.html | sort | uniq -c | sort -rn | head -20 || true
+          for host in ws75 ws2 ws57 ws90; do
+            echo "######## $host"
+            curl -s --max-time 60 -A "Mozilla/5.0" "https://${host}.aptoide.com/api/7/listAppVersions/package_name=com.tencent.mobileqq/limit=30" -o /tmp/a.json || true
+            echo "bytes: $(wc -c < /tmp/a.json 2>/dev/null || echo 0)"
+            head -c 400 /tmp/a.json; echo
+          done
