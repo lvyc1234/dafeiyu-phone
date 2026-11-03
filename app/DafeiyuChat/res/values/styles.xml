@@ -1,11 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Android 4.4（API 19）没有 Material 主题，用 Holo 兜底；
+     API 21+ 由 values-v21/styles.xml 覆盖。 -->
 <resources>
-    <style name="AppTheme" parent="android:Theme.Material.NoActionBar">
-        <item name="android:fontFamily">sans-serif</item>
+    <style name="AppTheme" parent="@android:style/Theme.Holo.NoActionBar">
         <item name="android:windowBackground">#0B0E14</item>
-        <item name="android:statusBarColor">#0B0E14</item>
-        <item name="android:navigationBarColor">#0B0E14</item>
-        <item name="android:windowLightStatusBar">false</item>
-        <item name="android:colorAccent">#4DA3FF</item>
+        <item name="android:colorBackground">#0B0E14</item>
     </style>
 </resources>

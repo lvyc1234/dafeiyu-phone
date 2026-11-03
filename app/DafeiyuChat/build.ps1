@@ -30,20 +30,20 @@ Write-Host "[2/7] link resources + assets"
     -o (Join-Path $build "app-unsigned.apk") `
     -I $androidJar `
     --manifest (Join-Path $root "AndroidManifest.xml") `
-    -R (Join-Path $build "res.zip") `
     -A (Join-Path $root "assets") `
     --auto-add-overlay `
-    --min-sdk-version 23 `
-    --target-sdk-version 34
+    --min-sdk-version 19 `
+    --target-sdk-version 34 `
+    (Join-Path $build "res.zip")
 
 Write-Host "[3/7] compile java"
 $sources = Get-ChildItem (Join-Path $root "src") -Recurse -Filter *.java | ForEach-Object { $_.FullName }
-& $javac -source 8 -target 8 -bootclasspath "$androidJar;$bt\core-lambda-stubs.jar" -d (Join-Path $build "classes") $sources
+& $javac -encoding UTF-8 -source 8 -target 8 -Xlint:-options -bootclasspath "$androidJar;$bt\core-lambda-stubs.jar" -d (Join-Path $build "classes") $sources
 if ($LASTEXITCODE -ne 0) { throw "javac failed" }
 
 Write-Host "[4/7] d8"
 & $jarExe cf (Join-Path $build "classes.jar") -C (Join-Path $build "classes") .
-& $d8 --lib $androidJar --min-api 23 --output (Join-Path $build "dex") (Join-Path $build "classes.jar")
+& $d8 --lib $androidJar --min-api 19 --output (Join-Path $build "dex") (Join-Path $build "classes.jar")
 if ($LASTEXITCODE -ne 0) { throw "d8 failed" }
 
 Write-Host "[5/7] add classes.dex"
@@ -60,7 +60,8 @@ if (-not (Test-Path $ks)) {
         -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" | Out-Null
 }
 $out = Join-Path $dist "DafeiyuChat.apk"
-& $apksigner sign --ks $ks --ks-pass pass:android --key-pass pass:android --out $out (Join-Path $build "app-aligned.apk")
+& $apksigner sign --ks $ks --ks-pass pass:android --key-pass pass:android `
+    --min-sdk-version 18 --v1-signing-enabled true --v2-signing-enabled true --out $out (Join-Path $build "app-aligned.apk")
 if ($LASTEXITCODE -ne 0) { throw "apksigner failed" }
 & $apksigner verify --verbose $out
 

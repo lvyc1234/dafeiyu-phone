@@ -1,0 +1,103 @@
+name: android44
+
+# 在 GitHub Actions 上编译「大肥鱼」两个 APK，最低支持 Android 4.4（API 19）。
+# 产物：Actions artifact + release 页面的 dist/*.apk
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'scripts/**'
+      - '.github/workflows/**'
+  workflow_dispatch:
+    inputs:
+      min_sdk:
+        description: 'minSdkVersion'
+        required: false
+        default: '19'
+
+permissions:
+  contents: write
+
+env:
+  MIN_SDK: ${{ github.event.inputs.min_sdk || '19' }}
+
+jobs:
+  build:
+    name: build ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [DafeiyuBoot, DafeiyuChat]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        run: |
+          SDKMANAGER="${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$(ls "${ANDROID_HOME}"/cmdline-tools/*/bin/sdkmanager | head -1)"
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-34" "build-tools;34.0.0" >/dev/null
+          echo "build-tools:"; ls "${ANDROID_HOME}/build-tools"
+
+      - name: Restore signing keystore
+        uses: actions/cache@v4
+        with:
+          path: keystore/${{ matrix.app }}.jks
+          key: ks-${{ matrix.app }}-v1
+
+      - name: Build ${{ matrix.app }} (minSdk ${{ env.MIN_SDK }})
+        run: bash scripts/build_app.sh ${{ matrix.app }} "${MIN_SDK}"
+
+      - name: Check apk (minSdk / signature)
+        run: |
+          BT="$(ls -d "${ANDROID_HOME}"/build-tools/* | sort -V | tail -1)"
+          "$BT/aapt2" dump badging "dist/${{ matrix.app }}.apk" | head -5
+          "$BT/apksigner" verify --print-certs "dist/${{ matrix.app }}.apk" | head -5
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.app }}-android44
+          path: dist/${{ matrix.app }}.apk
+          if-no-files-found: error
+
+  release:
+    name: publish release
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List apks
+        run: ls -la artifacts
+
+      - name: Publish to release (android44-latest)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: android44-latest
+          name: 大肥鱼 · Android 4.4 兼容版
+          body: |
+            自动构建（minSdk 19，含 v1 签名，Android 4.4 可直接安装）。
+
+            - DafeiyuBoot.apk：开机启动器
+            - DafeiyuChat.apk：聊天界面（WebView 已降级为 ES5）
+
+            Android 4.4 建议搭配 Auto.js 4.1.1（AutoX.js 6 需要 Android 7+）。
+          files: artifacts/*.apk
+          overwrite_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,10 +10,15 @@
 - 用一个原生 Android APK 当聊天窗口
 - 不需要电脑常开，不需要 root
 
-[![Version](https://img.shields.io/badge/version-1.1.0-FB7299)](RELEASE_NOTES.md)
+[![Version](https://img.shields.io/badge/version-1.2.0--android44-FB7299)](RELEASE_NOTES.md)
 [![Memory](https://img.shields.io/badge/Memory-Local%20File%20System-2F6BFF)](autox/agent.js)
-[![Android](https://img.shields.io/badge/Android-8%2B-3DDC84)](https://www.android.com/)
+[![Android](https://img.shields.io/badge/Android-4.4%20~%2015-3DDC84)](docs/ANDROID44.md)
 [![DSH World](https://img.shields.io/badge/DSH%20World-chenkezhen480%2Fdsh--world-6f42c1)](https://github.com/chenkezhen480/dsh-world)
+
+> **Android 4.4（API 19）兼容版**：两个 APK 的 `minSdkVersion` 已降到 19，
+> 主题/通知/悬浮窗/前台服务/TLS 全部做了版本守卫，聊天页降级为 ES5 + 旧版 WebView 布局。
+> 改动清单见 [docs/ANDROID44.md](docs/ANDROID44.md)，用 GitHub Actions 自动编译
+> （`.github/workflows/android44.yml`，产物在 Actions artifact 与 `android44-latest` release）。
 
 ![大肥鱼主视觉](docs/images/main-visual.png)
 

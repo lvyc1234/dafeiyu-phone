@@ -1,7 +1,11 @@
 /*
  * Phone Agent · 纯手机端（AutoX.js）
  * ------------------------------------------------------------
- * 运行环境：AutoX.js v6.6.8+，Android 11+，无需 root、无需 PC。
+ * 运行环境：
+ *   - Android 7.0+  ：AutoX.js v6.6.8+，无需 root、无需 PC（完整功能）
+ *   - Android 4.4~6 ：Auto.js 4.1.1（org.autojs.autojs），API 19 起可用
+ *                     4.4 没有 MediaProjection，截屏/OCR 兜底需要 root；
+ *                     前台保活服务不存在时自动跳过，不影响主流程
  * 原理：AutoX.js 的无障碍服务读取控件树 -> 调 LLM -> 用无障碍点击/输入。
  *
  * 首次使用：
@@ -172,6 +176,26 @@ var presenceWin = null;
 var collapsed = false;
 var lastTask = "";
 var captureReady = false;
+
+// ---------------------------------------------------------------------------
+// 老系统兼容层
+// ---------------------------------------------------------------------------
+// Android 4.4（API 19）没有 MediaProjection：截屏只能走 root 的 screencap。
+// 同时没有 NotificationChannel / startForegroundService / AutoX 6 的保活服务，
+// 这里统一做能力探测，缺什么就降级，而不是直接崩。
+var SDK_INT = 0;
+try {
+    SDK_INT = parseInt(android.os.Build.VERSION.SDK_INT, 10) || 0;
+} catch (e) {
+    SDK_INT = 0;
+}
+var IS_KITKAT = SDK_INT > 0 && SDK_INT <= 19;
+var AUTOX_PKG_CANDIDATES = [
+    ["org.autojs.autoxjs.v6", "org.autojs.autojs.external.foreground.ForegroundService"],
+    ["org.autojs.autoxjs", "org.autojs.autojs.external.foreground.ForegroundService"],
+    ["org.autojs.autojs", "org.autojs.autojs.external.foreground.ForegroundService"]
+];
+
 var running = false;
 var stopRequested = false;
 var finished = false;
@@ -354,8 +378,23 @@ function sleepAfterTask() {
     addLog("任务结束，已重新熄屏");
 }
 
+function isRooted() {
+    return safeCall(function () {
+        var out = shell("id");
+        return String(out).indexOf("uid=0") >= 0;
+    }, false);
+}
+
 function ensureScreenCapture() {
     if (captureReady) return true;
+    if (IS_KITKAT) {
+        // 4.4 没有 MediaProjection，requestScreenCapture 只有在 root 下才有意义
+        if (!isRooted()) {
+            addLog("Android 4.4 无 MediaProjection 且无 root，截屏/OCR 兜底关闭（其它功能正常）");
+            return false;
+        }
+        addLog("Android 4.4 + root：尝试走 screencap 截屏");
+    }
     captureReady = safeCall(function () {
         return images.requestScreenCapture(false);
     }, false);
@@ -3646,19 +3685,22 @@ ensureLogDir();
 // 从 BOOT_COMPLETED 拉起时，AutoX 可能不会自动启动自己的前台服务；
 // 进程会在开机广播结束后被系统回收。显式请求一次，保住脚本和远程桥。
 function startKeepAliveService() {
-    try {
-        var intent = new android.content.Intent();
-        intent.setClassName("org.autojs.autoxjs.v6",
-            "org.autojs.autojs.external.foreground.ForegroundService");
-        if (android.os.Build.VERSION.SDK_INT >= 26) {
-            context.startForegroundService(intent);
-        } else {
-            context.startService(intent);
+    for (var i = 0; i < AUTOX_PKG_CANDIDATES.length; i++) {
+        try {
+            var intent = new android.content.Intent();
+            intent.setClassName(AUTOX_PKG_CANDIDATES[i][0], AUTOX_PKG_CANDIDATES[i][1]);
+            if (SDK_INT >= 26) {
+                context.startForegroundService(intent);
+            } else {
+                context.startService(intent);
+            }
+            addLog("前台保活服务已请求（" + AUTOX_PKG_CANDIDATES[i][0] + "）");
+            return;
+        } catch (e) {
+            // 包名不对或老版本没有这个服务，换下一个
         }
-        addLog("前台保活服务已请求");
-    } catch (e) {
-        addLog("前台保活服务启动失败: " + e);
     }
+    addLog("前台保活服务不可用（Auto.js 4.x 没有该服务，忽略；不影响主流程）");
 }
 startKeepAliveService();
 

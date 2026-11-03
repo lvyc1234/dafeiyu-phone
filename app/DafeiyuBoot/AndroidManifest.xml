@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.deepseek.dafeiyu.boot"
-    android:versionCode="1"
-    android:versionName="1.0.0">
+    android:versionCode="2"
+    android:versionName="1.1.0">
 
-    <uses-sdk android:minSdkVersion="23" android:targetSdkVersion="34" />
+    <!-- API 19 = Android 4.4 KitKat；低版本系统同时支持 Dalvik 与 ART -->
+    <uses-sdk android:minSdkVersion="19" android:targetSdkVersion="34" />
 
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
@@ -12,16 +13,21 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
+    <!-- Android 11+ 包可见性；4.4 不认识 <queries>，会被直接忽略 -->
     <queries>
         <package android:name="org.autojs.autoxjs.v6" />
+        <package android:name="org.autojs.autojs" />
+        <package android:name="org.autojs.autojs6" />
+        <package android:name="com.stardust.autojs" />
     </queries>
 
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="大肥鱼启动器"
-        android:theme="@android:style/Theme.Material.NoActionBar">
+        android:theme="@style/AppTheme">
 
         <activity
             android:name=".MainActivity"
@@ -48,6 +54,8 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON" />
             </intent-filter>
         </receiver>
     </application>

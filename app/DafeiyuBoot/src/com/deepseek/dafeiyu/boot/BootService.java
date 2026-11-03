@@ -7,12 +7,20 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Intent;
 import android.graphics.Color;
-import android.net.Uri;
 import android.os.Build;
 import android.os.IBinder;
 import android.provider.Settings;
 import android.util.Log;
 
+/**
+ * 开机拉起 AutoX / Auto.js。
+ *
+ * 4.4 兼容点：
+ *  - NotificationChannel 是 API 26+，4.4 直接 new Notification.Builder(this)
+ *  - PendingIntent.FLAG_IMMUTABLE 是 API 23+，4.4 传 0
+ *  - Notification.Builder.setColor 是 API 21+
+ *  - Settings.canDrawOverlays 是 API 23+，4.4 视为已授权
+ */
 public class BootService extends Service {
     private static final String TAG = "DafeiyuBoot";
     private static final String CHANNEL = "dafeiyu_boot";
@@ -80,15 +88,9 @@ public class BootService extends Service {
         return 0;
     }
 
-    private Intent agentIntent() {
-        Intent intent = new Intent();
-        intent.setClassName("org.autojs.autoxjs.v6",
-                "org.autojs.autojs.external.shortcut.ShortcutActivity");
-        intent.putExtra("path", "/sdcard/PhoneAgent/agent.js");
-        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-                | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-        return intent;
+    private boolean canOverlay() {
+        if (Build.VERSION.SDK_INT >= 23) return Settings.canDrawOverlays(this);
+        return true;
     }
 
     private void launchWithRetry() {
@@ -96,10 +98,17 @@ public class BootService extends Service {
         for (int i = 0; i < delays.length; i++) {
             sleep(delays[i]);
             try {
-                if (!Settings.canDrawOverlays(this)) {
+                if (!canOverlay()) {
                     Log.w(TAG, "overlay permission missing; trying anyway");
                 }
-                startActivity(agentIntent());
+                Intent intent = AutoJs.scriptIntent(this, "/sdcard/PhoneAgent/agent.js");
+                if (intent == null) {
+                    Log.w(TAG, "no AutoX/Auto.js installed");
+                    updateNotification("没找到 AutoX / Auto.js", "装好 Auto.js 4.1.1（4.4）或 AutoX.js 6（7.0+）");
+                    stopSelf();
+                    return;
+                }
+                startActivity(intent);
                 Log.i(TAG, "agent launch requested, attempt " + (i + 1));
                 updateNotification("已发送启动请求", "大肥鱼正在回到手机里");
                 sleep(5000);
@@ -114,10 +123,12 @@ public class BootService extends Service {
         stopSelf();
     }
 
-    /** MIUI 拦截后台启动时，给用户一个一发即中的通知，而不是静默失败。 */
+    /** 系统拦截后台启动时，给用户一个一发即中的通知，而不是静默失败。 */
     private void showFallback() {
         try {
-            PendingIntent pi = PendingIntent.getActivity(this, 1, agentIntent(),
+            Intent intent = AutoJs.scriptIntent(this, "/sdcard/PhoneAgent/agent.js");
+            if (intent == null) return;
+            PendingIntent pi = PendingIntent.getActivity(this, 1, intent,
                     PendingIntent.FLAG_UPDATE_CURRENT | pendingFlags());
             Notification.Builder b = Build.VERSION.SDK_INT >= 26
                     ? new Notification.Builder(this, CHANNEL_ALERT)

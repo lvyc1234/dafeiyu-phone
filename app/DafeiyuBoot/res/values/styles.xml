@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 4.4（API 19）没有 Material 主题，这里用 Holo 兜底。
+     API 21+ 由 values-v21/styles.xml 覆盖成 Material。 -->
+<resources>
+    <style name="AppTheme" parent="@android:style/Theme.Holo.NoActionBar">
+        <item name="android:windowBackground">#0B0E14</item>
+        <item name="android:colorBackground">#0B0E14</item>
+    </style>
+</resources>
