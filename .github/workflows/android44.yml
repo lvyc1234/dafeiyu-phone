@@ -63,8 +63,12 @@ jobs:
       - name: Check apk (minSdk / signature)
         run: |
           BT="$(ls -d "${ANDROID_HOME}"/build-tools/* | sort -V | tail -1)"
-          "$BT/aapt2" dump badging "dist/${{ matrix.app }}.apk" | head -5
-          "$BT/apksigner" verify --print-certs "dist/${{ matrix.app }}.apk" | head -5
+          echo "--- badging"
+          "$BT/aapt2" dump badging "dist/${{ matrix.app }}.apk" | grep -E "^package:|^sdkVersion|^targetSdkVersion"
+          echo "--- signature schemes"
+          "$BT/apksigner" verify -v "dist/${{ matrix.app }}.apk" | grep -E "Verifies|Verified using"
+          echo "--- cert"
+          "$BT/apksigner" verify --print-certs "dist/${{ matrix.app }}.apk" | grep -E "Signer|digest" | head -4
 
       - uses: actions/upload-artifact@v4
         with:
