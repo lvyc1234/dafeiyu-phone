@@ -56,7 +56,7 @@ public class LinkService extends Service {
     public interface Listener {
         void onState(int state, String detail);
         void onMsg(Msg m);
-        void onTyping(boolean on);
+        void onTyping(boolean on, String text);
         void onLog(String line);
         void onSyncDone(int total);
     }
@@ -451,7 +451,8 @@ public class LinkService extends Service {
         }
         if ("typing".equals(t)) {
             boolean on = j.optBoolean("on", false);
-            for (Listener l : LISTENERS) l.onTyping(on);
+            String tt = j.optString("text", "");
+            for (Listener l : LISTENERS) l.onTyping(on, tt);
             return;
         }
         if ("ack".equals(t)) {

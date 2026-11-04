@@ -423,8 +423,12 @@ public class ChatActivity extends Activity implements LinkService.Listener {
     }
 
     @Override
-    public void onTyping(boolean on) {
-        ui.post(() -> status.setText(on ? "正在输入…" : "在线"));
+    public void onTyping(boolean on, String text) {
+        ui.post(() -> {
+            status.setText(on ? "正在输入…" : "在线");
+            adapter.setTyping(on, text);
+            if (on) scrollBottom();
+        });
     }
 
     @Override

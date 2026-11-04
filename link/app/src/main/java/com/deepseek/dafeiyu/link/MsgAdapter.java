@@ -22,6 +22,7 @@ public class MsgAdapter extends BaseAdapter {
 
     private final Context ctx;
     private final List<Msg> data = new ArrayList<>();
+    private Msg typingMsg = null;
     private final OnMediaClick mediaClick;
 
     public MsgAdapter(Context ctx, OnMediaClick cb) {
@@ -35,7 +36,32 @@ public class MsgAdapter extends BaseAdapter {
         notifyDataSetChanged();
     }
 
+    /** 对方状态气泡：正在输入 / 正在调用工具… */
+    public void setTyping(boolean on, String text) {
+        if (on) {
+            if (typingMsg == null) {
+                typingMsg = new Msg(false, "typing", text == null ? "正在输入…" : text);
+                data.add(typingMsg);
+            } else {
+                typingMsg.body = text == null ? "正在输入…" : text;
+            }
+        } else {
+            if (typingMsg != null) {
+                data.remove(typingMsg);
+                typingMsg = null;
+            }
+        }
+        notifyDataSetChanged();
+    }
+
     public void add(Msg m) {
+        if (typingMsg != null) { data.remove(typingMsg); }
+        data.add(m);
+        if (typingMsg != null) { data.add(typingMsg); }
+        notifyDataSetChanged();
+    }
+
+    public void addPlain(Msg m) {
         data.add(m);
         notifyDataSetChanged();
     }
@@ -74,12 +100,26 @@ public class MsgAdapter extends BaseAdapter {
         TextView time = v.findViewById(R.id.time);
         LinearLayout bubble = v.findViewById(R.id.bubble);
 
+        ImageView av = v.findViewById(R.id.avatar);
+        if (av != null) {
+            av.setImageResource(m.mine ? R.drawable.bg_avatar : R.drawable.avatar_her);
+            if (!m.mine) av.setBackgroundResource(0);
+        }
         body.setVisibility(View.GONE);
         image.setVisibility(View.GONE);
         voice.setVisibility(View.GONE);
         image.setImageDrawable(null);
         bubble.setBackgroundResource(m.mine ? R.drawable.bubble_mine : R.drawable.bubble_theirs);
 
+        if ("typing".equals(m.type)) {
+            body.setVisibility(View.VISIBLE);
+            body.setTextSize(13);
+            body.setText("● " + (m.body == null ? "正在输入…" : m.body));
+            body.setTextColor(0xFF888888);
+            bubble.setBackgroundResource(R.drawable.bubble_theirs);
+            time.setText("");
+            return v;
+        }
         if (Msg.T_IMAGE.equals(m.type)) {
             image.setVisibility(View.VISIBLE);
             Bitmap bmp = m.path == null || m.path.isEmpty() ? null : Util.decodeFile(m.path, 480);
