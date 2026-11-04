@@ -8,7 +8,10 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
+import android.provider.Settings;
 import android.util.Log;
 
 import org.json.JSONArray;
@@ -103,6 +106,10 @@ public class LinkService extends Service {
     private JSONArray targetHashes = null;
     private Db db;
 
+    /** 悬浮状态面板（开关打开且拿到 SYSTEM_ALERT_WINDOW 才有实例） */
+    private FloatPanel panel;
+    private final Handler main = new Handler(Looper.getMainLooper());
+
     // ------------------------------------------------------------ lifecycle
 
     @Override
@@ -118,6 +125,7 @@ public class LinkService extends Service {
         t.start();
         new DebugServer(this).start();
         log("调试口 127.0.0.1:" + DebugServer.PORT + " 就绪");
+        syncPanel();
     }
 
     @Override
@@ -128,6 +136,7 @@ public class LinkService extends Service {
     @Override
     public void onDestroy() {
         alive = false;
+        destroyPanel();
         closeSocket();
         INSTANCE = null;
         super.onDestroy();
@@ -159,6 +168,63 @@ public class LinkService extends Service {
 
     public void clearHistory() {
         db.clear();
+    }
+
+    // ------------------------------------------------------------ 悬浮面板
+
+    /**
+     * 按 Prefs 的「显示悬浮窗」开关创建/销毁面板。
+     * 设置页改完开关、ChatActivity 从授权页回来时都会调它，重复调用是安全的。
+     */
+    public void syncPanel() {
+        if (Looper.myLooper() != Looper.getMainLooper()) {
+            main.post(this::syncPanel);
+            return;
+        }
+        if (prefs == null) return;
+        if (!prefs.overlay()) {
+            destroyPanel();
+            return;
+        }
+        if (!Settings.canDrawOverlays(this)) {
+            // 开关是开的但系统还没授权：面板先不建，等授权后 syncPanel 再来
+            if (panel != null) destroyPanel();
+            log("悬浮窗开关已开，但缺「显示在其他应用上层」权限");
+            return;
+        }
+        if (panel != null) {
+            if (panel.isShowing()) {
+                panel.refresh();
+                return;
+            }
+            destroyPanel();
+        }
+        FloatPanel p = new FloatPanel(this, this::onPanelDismiss);
+        if (p.show()) {
+            panel = p;
+            log("悬浮面板已显示");
+        } else {
+            log("悬浮面板创建失败（权限或 WindowManager 异常）");
+        }
+    }
+
+    /** 长按面板：关掉开关并销毁，避免下次启动又弹出来 */
+    private void onPanelDismiss() {
+        prefs.setOverlay(false);
+        main.post(this::destroyPanel);
+        log("悬浮面板已关闭（长按）");
+    }
+
+    private void destroyPanel() {
+        if (panel != null) {
+            panel.destroy();
+            panel = null;
+        }
+    }
+
+    /** 画廊换头像后调用，面板开着就换图 */
+    public void refreshPanelAvatar() {
+        if (panel != null) panel.updateAvatar();
     }
 
     // ------------------------------------------------------------ 网络循环

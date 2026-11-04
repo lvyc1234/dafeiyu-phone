@@ -8,12 +8,14 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.text.InputType;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,6 +25,7 @@ public class SettingsActivity extends Activity {
 
     private EditText host, port, nick, key, linkStr;
     private TextView tip;
+    private Switch swOverlay;
     private Prefs prefs;
 
     @Override
@@ -36,6 +39,8 @@ public class SettingsActivity extends Activity {
         key = findViewById(R.id.key);
         linkStr = findViewById(R.id.linkStr);
         tip = findViewById(R.id.tip);
+        swOverlay = findViewById(R.id.swOverlay);
+        bindOverlaySwitch();
 
         host.setText(prefs.host());
         port.setText(String.valueOf(prefs.port()));
@@ -81,6 +86,57 @@ public class SettingsActivity extends Activity {
         String text = data.getStringExtra("result");
         linkStr.setText(text == null ? "" : text);
         importLink(text);
+    }
+
+    // ------------------------------------------------------------ 悬浮窗开关
+
+    /** 从系统授权页回来：权限拿到就立刻让服务把面板建出来 */
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (swOverlay != null) swOverlay.setChecked(prefs.overlay());
+        LinkService s = LinkService.get();
+        if (s != null) s.syncPanel();
+    }
+
+    /**
+     * 开关只负责写 Prefs，真正的窗口由 LinkService.syncPanel() 建/销毁。
+     * 打开时如果还没授权，顺手把用户送到「显示在其他应用上层」的系统页。
+     */
+    private void bindOverlaySwitch() {
+        if (swOverlay == null) return;
+        swOverlay.setChecked(prefs.overlay());
+        swOverlay.setOnCheckedChangeListener((btn, checked) -> {
+            prefs.setOverlay(checked);
+            LinkService s = LinkService.get();
+            if (s != null) s.syncPanel();
+            if (!checked) {
+                toast("悬浮窗已关闭");
+                return;
+            }
+            if (!canOverlay()) {
+                toast(getString(R.string.overlay_denied));
+                openOverlaySettings();
+            } else {
+                toast("悬浮窗已开启，长按面板可关闭");
+            }
+        });
+    }
+
+    private boolean canOverlay() {
+        return Settings.canDrawOverlays(this);
+    }
+
+    private void openOverlaySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     /** 支持三种来源：扫码、粘贴、手输 */

@@ -15,6 +15,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.MediaStore;
 import android.provider.OpenableColumns;
+import android.provider.Settings;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.inputmethod.InputMethodManager;
@@ -37,6 +38,7 @@ public class ChatActivity extends Activity implements LinkService.Listener {
     private static final int REQ_IMG = 21;
     private static final int REQ_SCAN = 22;
     private static final int REQ_PERM = 23;
+    private static final int REQ_GALLERY = 24;
 
     private static final String[] EMOJIS = {
             "😀", "😄", "😆", "😅", "😂", "🙂", "😉", "😊",
@@ -96,6 +98,7 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         buildEmojiGrid();
         bindButtons();
         requestNeededPermissions();
+        checkOverlayPermission();
 
         LinkService.addListener(this);
         LinkService.start(this);
@@ -110,6 +113,11 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         super.onResume();
         LinkService.appVisible = true;
         syncServiceState();
+        // 从「显示在其他应用上层」授权页回来时，让服务把面板拉起来
+        LinkService s = LinkService.get();
+        if (s != null) s.syncPanel();
+        // 立绘画廊可能刚换过头像
+        if (adapter != null) adapter.reloadAvatar();
     }
 
     @Override
@@ -132,6 +140,37 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         }
     }
 
+    // ------------------------------------------------------------ 悬浮窗权限
+
+    /** 开关开着但系统没授权：进 App 时引导一次，别让它静默失败 */
+    private void checkOverlayPermission() {
+        if (!prefs.overlay()) return;
+        if (canOverlay()) return;
+        new AlertDialog.Builder(this)
+                .setTitle("开启悬浮窗")
+                .setMessage("「显示悬浮窗」已经开着，但系统还没授权。\n"
+                        + "去设置里允许「显示在其他应用上层」，返回后状态面板就会出现。")
+                .setPositiveButton("去设置", (d, w) -> openOverlaySettings())
+                .setNegativeButton("以后再说", null)
+                .show();
+    }
+
+    private boolean canOverlay() {
+        return Settings.canDrawOverlays(this);
+    }
+
+    private void openOverlaySettings() {
+        try {
+            startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:" + getPackageName())));
+        } catch (Exception e) {
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION));
+            } catch (Exception ignored) {
+            }
+        }
+    }
+
     @Override
     protected void onDestroy() {
         LinkService.removeListener(this);
@@ -145,6 +184,14 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         if (res != RESULT_OK) return;
         if (req == REQ_IMG && data != null && data.getData() != null) {
             sendImage(data.getData());
+        } else if (req == REQ_GALLERY) {
+            // 画廊把选中的图写成了 filesDir/avatar_current.jpg，这边只要重新读
+            if (adapter != null) {
+                adapter.reloadAvatar();
+                adapter.notifyDataSetChanged();
+            }
+            LinkService s = LinkService.get();
+            if (s != null) s.refreshPanelAvatar();
         } else if (req == REQ_SCAN && data != null) {
             String text = data.getStringExtra("result");
             if (text != null && text.startsWith("dafeiyu://")) {
@@ -163,6 +210,8 @@ public class ChatActivity extends Activity implements LinkService.Listener {
                 startActivity(new Intent(this, SettingsActivity.class)));
         findViewById(R.id.btnScan).setOnClickListener(v ->
                 startActivityForResult(new Intent(this, ScanActivity.class), REQ_SCAN));
+        findViewById(R.id.btnGallery).setOnClickListener(v ->
+                startActivityForResult(new Intent(this, GalleryActivity.class), REQ_GALLERY));
 
         Button voice = findViewById(R.id.btnVoice);
         voice.setOnTouchListener((v, e) -> {

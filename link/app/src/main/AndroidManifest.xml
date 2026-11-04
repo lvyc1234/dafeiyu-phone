@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
         android:maxSdkVersion="32" />
+    <!-- 悬浮窗状态面板（TYPE_APPLICATION_OVERLAY）；首次需要在系统设置里手动授权 -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
 
@@ -32,6 +34,8 @@
         </activity>
 
         <activity android:name=".SettingsActivity" android:exported="false" />
+        <activity android:name=".GalleryActivity" android:exported="false"
+            android:screenOrientation="portrait" />
         <activity android:name=".ScanActivity" android:exported="false"
             android:screenOrientation="portrait" />
 

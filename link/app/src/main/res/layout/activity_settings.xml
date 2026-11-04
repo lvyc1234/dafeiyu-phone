@@ -161,6 +161,36 @@
             android:lineSpacingExtra="3dp"
             android:text="提示：服务端是手机上的 AutoX 脚本，监听 9527；\nIPv6 直连走原生 TCP，frp 只做端口转发即可。\n全程 AES-256-GCM，密钥不出本机。" />
 
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="@string/overlay_switch"
+                android:textColor="@color/text"
+                android:textSize="15sp" />
+
+            <Switch
+                android:id="@+id/swOverlay"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:lineSpacingExtra="3dp"
+            android:text="@string/overlay_tip"
+            android:textColor="@color/sub"
+            android:textSize="12sp" />
+
         <Button
             android:id="@+id/btnSave"
             android:layout_width="match_parent"

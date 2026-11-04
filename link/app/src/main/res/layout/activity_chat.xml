@@ -39,6 +39,15 @@
                 android:textSize="11sp" />
 
             <Button
+                android:id="@+id/btnGallery"
+                style="?android:attr/borderlessButtonStyle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:minWidth="0dp"
+                android:text="🖼"
+                android:textSize="16sp" />
+
+            <Button
                 android:id="@+id/btnScan"
                 style="?android:attr/borderlessButtonStyle"
                 android:layout_width="wrap_content"

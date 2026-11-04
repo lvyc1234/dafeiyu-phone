@@ -28,6 +28,19 @@ public final class Prefs {
         sp.edit().putString("key", key).apply();
     }
 
+    /** 是否显示悬浮状态面板（设置页的开关） */
+    public boolean overlay() { return sp.getBoolean("overlay", false); }
+
+    public void setOverlay(boolean on) { sp.edit().putBoolean("overlay", on).apply(); }
+
+    /** 悬浮面板左上角坐标；Integer.MIN_VALUE = 没存过（首次用默认位置） */
+    public int panelX() { return sp.getInt("panelX", Integer.MIN_VALUE); }
+    public int panelY() { return sp.getInt("panelY", Integer.MIN_VALUE); }
+
+    public void savePanelPos(int x, int y) {
+        sp.edit().putInt("panelX", x).putInt("panelY", y).apply();
+    }
+
     /** 上次同步时服务端返回的分片 hash 列表（JSON 数组字符串） */
     public String syncHashes() { return sp.getString("syncHashes", ""); }
 

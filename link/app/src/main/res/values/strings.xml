@@ -8,4 +8,18 @@
     <string name="connecting">连接中…</string>
     <string name="offline">未连接</string>
     <string name="hold_to_talk">按住说话</string>
+
+    <!-- 立绘画廊 -->
+    <string name="gallery">立绘</string>
+    <string name="gallery_title">立绘画廊</string>
+    <string name="gallery_refresh">刷新</string>
+    <string name="gallery_close">完成</string>
+    <string name="gallery_empty">这里还没有图片\n\n把图片放进 /sdcard/Android/data/com.deepseek.dafeiyu.link/files/gallery/ 里\n（App 私有目录 files/gallery/ 也认）\n\n支持 jpg / png / webp，点一张就设为当前头像</string>
+    <string name="gallery_pick_fail">这张图读不出来</string>
+    <string name="gallery_saved">已设为头像</string>
+
+    <!-- 悬浮窗 -->
+    <string name="overlay_switch">显示悬浮窗</string>
+    <string name="overlay_tip">第一次开启需要在系统设置里允许「显示在其他应用上层」。悬浮面板可拖动；点击进聊天，长按关闭。</string>
+    <string name="overlay_denied">还没给悬浮窗权限，去系统设置里允许「显示在其他应用上层」</string>
 </resources>

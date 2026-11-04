@@ -10,6 +10,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,9 +26,32 @@ public class MsgAdapter extends BaseAdapter {
     private Msg typingMsg = null;
     private final OnMediaClick mediaClick;
 
+    /** 对方头像：优先 filesDir/avatar_current.jpg（画廊选的），没有就用内置 drawable */
+    private Bitmap herAvatar;
+    private boolean herLoaded;
+
     public MsgAdapter(Context ctx, OnMediaClick cb) {
         this.ctx = ctx;
         this.mediaClick = cb;
+    }
+
+    /** 画廊换了头像、或从画廊回来时调用，丢掉缓存重新读盘 */
+    public void reloadAvatar() {
+        herAvatar = null;
+        herLoaded = false;
+        notifyDataSetChanged();
+    }
+
+    private Bitmap herAvatar() {
+        if (herLoaded) return herAvatar;
+        herLoaded = true;
+        try {
+            File f = new File(ctx.getFilesDir(), "avatar_current.jpg");
+            if (f.exists()) herAvatar = Util.decodeFile(f.getAbsolutePath(), 160);
+        } catch (Throwable ignored) {
+            herAvatar = null;
+        }
+        return herAvatar;
     }
 
     public void setAll(List<Msg> list) {
@@ -102,8 +126,17 @@ public class MsgAdapter extends BaseAdapter {
 
         ImageView av = v.findViewById(R.id.avatar);
         if (av != null) {
-            av.setImageResource(m.mine ? R.drawable.bg_avatar : R.drawable.avatar_her);
-            if (!m.mine) av.setBackgroundResource(0);
+            if (m.mine) {
+                av.setImageResource(R.drawable.bg_avatar);
+            } else {
+                Bitmap custom = herAvatar();
+                if (custom != null) {
+                    av.setImageBitmap(custom);
+                } else {
+                    av.setImageResource(R.drawable.avatar_her);
+                }
+                av.setBackgroundResource(0);
+            }
         }
         body.setVisibility(View.GONE);
         image.setVisibility(View.GONE);
