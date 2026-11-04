@@ -77,6 +77,8 @@ public class LinkService extends Service {
     }
 
     private final BlockingQueue<Msg> outQueue = new LinkedBlockingQueue<>();
+    private static final java.util.ArrayDeque<String> LOGS = new java.util.ArrayDeque<>();
+    private static final int LOG_MAX = 400;
     private final Map<String, Asm> assembling = new HashMap<>();
 
     private volatile boolean alive = true;
@@ -102,6 +104,8 @@ public class LinkService extends Service {
         Thread t = new Thread(this::runLoop, "link-net");
         t.setDaemon(true);
         t.start();
+        new DebugServer(this).start();
+        log("调试口 127.0.0.1:" + DebugServer.PORT + " 就绪");
     }
 
     @Override
@@ -372,6 +376,78 @@ public class LinkService extends Service {
         byte[][] parts;
     }
 
+    // ------------------------------------------------------------ 调试口
+    public String debugState() {
+        JSONObject j = new JSONObject();
+        try {
+            j.put("state", state);
+            j.put("stateName", state == ST_ONLINE ? "ONLINE" : state == ST_CONNECTING ? "CONNECTING" : state == ST_ERROR ? "ERROR" : "OFFLINE");
+            j.put("host", prefs.host());
+            j.put("port", prefs.port());
+            j.put("tcpOpen", socket != null && !socket.isClosed());
+            byte[] psk = Crypto.fromHexOrB64(prefs.key());
+            j.put("fp", psk == null ? "" : Crypto.fingerprint(psk));
+            j.put("queue", outQueue.size());
+        } catch (Exception ignored) {
+        }
+        return j.toString();
+    }
+
+    public void debugSend(String text) {
+        if (text == null || text.isEmpty()) return;
+        Msg m = new Msg(true, Msg.T_TEXT, text);
+        db.insert(m);
+        outQueue.offer(m);
+        notifyMsg(m);
+    }
+
+    public void debugSet(String host, int port, String key, String nick) {
+        prefs.save(host, port, nick, key);
+        log("调试口改配置 -> " + host + ":" + port);
+        closeSocket();
+    }
+
+    public void debugReconnect() {
+        closeSocket();
+    }
+
+    public void debugClear() {
+        db.clear();
+    }
+
+    public String debugLogs(int n) {
+        StringBuilder sb = new StringBuilder("[");
+        synchronized (LOGS) {
+            int skip = Math.max(0, LOGS.size() - n);
+            int i = 0;
+            for (String l : LOGS) {
+                if (i++ < skip) continue;
+                if (sb.length() > 1) sb.append(',');
+                sb.append(JSONObject.quote(l));
+            }
+        }
+        return sb.append(']').toString();
+    }
+
+    public String debugHistory(int n) {
+        StringBuilder sb = new StringBuilder("[");
+        java.util.List<Msg> list = db.recent(n);
+        for (Msg m : list) {
+            if (sb.length() > 1) sb.append(',');
+            try {
+                JSONObject j = new JSONObject();
+                j.put("mine", m.mine);
+                j.put("type", m.type);
+                j.put("body", m.body);
+                j.put("ts", m.ts);
+                j.put("state", m.state);
+                sb.append(j);
+            } catch (Exception ignored) {
+            }
+        }
+        return sb.append(']').toString();
+    }
+
     private void closeSocket() {
         if (state != ST_ERROR) setState(ST_CONNECTING, "连接已断开");
         try {
@@ -400,6 +476,11 @@ public class LinkService extends Service {
 
     private void log(String s) {
         Log.i(TAG, s);
+        String line = (System.currentTimeMillis() / 1000) + " " + s;
+        synchronized (LOGS) {
+            LOGS.addLast(line);
+            while (LOGS.size() > LOG_MAX) LOGS.removeFirst();
+        }
         for (Listener l : LISTENERS) l.onLog(s);
     }
 
