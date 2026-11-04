@@ -57,6 +57,11 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
 
         findViewById(R.id.btnAlbum).setOnClickListener(v -> pickFromAlbum());
         findViewById(R.id.btnCancel).setOnClickListener(v -> finish());
+
+        // 调试入口：am start -n .../.ScanActivity --ez pick true 直接拉起相册
+        if (getIntent() != null && getIntent().getBooleanExtra("pick", false)) {
+            preview.postDelayed(this::pickFromAlbum, 300);
+        }
     }
 
     @Override
