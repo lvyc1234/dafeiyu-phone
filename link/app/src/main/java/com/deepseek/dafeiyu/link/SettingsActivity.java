@@ -34,6 +34,7 @@ public class SettingsActivity extends Activity {
         setContentView(R.layout.activity_settings);
         prefs = new Prefs(this);
         host = findViewById(R.id.host);
+        etDomain = findViewById(R.id.domain);
         port = findViewById(R.id.port);
         nick = findViewById(R.id.nick);
         key = findViewById(R.id.key);
@@ -43,6 +44,7 @@ public class SettingsActivity extends Activity {
         bindOverlaySwitch();
 
         host.setText(prefs.host());
+        etDomain.setText(prefs.domain());
         port.setText(String.valueOf(prefs.port()));
         nick.setText(prefs.nick());
         key.setText(prefs.key());
@@ -197,7 +199,9 @@ public class SettingsActivity extends Activity {
     }
 
     private void save() {
-        String h = host.getText().toString().trim();
+        // 配了固定域名就用域名，IP 变了也不用重新扫码
+        String fixed = etDomain == null ? "" : etDomain.getText().toString().trim();
+        String h = fixed.isEmpty() ? host.getText().toString().trim() : fixed.replaceAll("^https?://", "").replaceAll("/.*$", "");
         int p;
         try {
             p = Integer.parseInt(port.getText().toString().trim());
@@ -211,6 +215,7 @@ public class SettingsActivity extends Activity {
             toast("密钥必须是 32 字节（Base64 或 64 位 hex）");
             return;
         }
+        if (etDomain != null) prefs.setDomain(etDomain.getText().toString());
         prefs.save(h, p, n, Crypto.b64(k));
         saveServerConfig();
         NodeRunner.stop();

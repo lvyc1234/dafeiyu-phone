@@ -17,6 +17,12 @@ const MAGIC = 0xd1a9;
 const LOG = path.join(ROOT, 'server.log');
 const SESSION_ID = crypto.randomUUID();   // opencode 网关要求 x-opencode-session
 
+/** 对外展示用地址：配了 domain 就优先域名 */
+function publicHost(fallback) {
+  const d = (CFG.domain || process.env.DAFEIYU_DOMAIN || '').trim();
+  return d ? d.replace(/^https?:\/\//, '').replace(/\/.*$/, '') : fallback;
+}
+
 function log(...a) {
   const line = `[${new Date().toISOString().replace('T', ' ').slice(0, 19)}] ` + a.join(' ');
   console.log(line);
@@ -765,7 +771,7 @@ function startWeb() {
     });
     webBridge = br;
     Promise.resolve(br.ready).then((r) => {
-      log('[web] 已启动 http://[::]:' + r.port + '/');
+      log('[web] 已启动 http://' + publicHost('[::]') + ':' + r.port + '/');
     }).catch((e) => log('[web] 启动失败: ' + e.message));
   } catch (e) {
     log('[web] 启动异常: ' + e.message);

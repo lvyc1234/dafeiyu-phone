@@ -62,6 +62,11 @@ public final class Prefs {
 
     public void setServerKey(String k) { sp.edit().putString("serverKey", k).apply(); }
 
+    /** 固定域名（DDNS）。填了以后二维码/链接一律用它，重启换 IP 也不用重扫 */
+    public String domain() { return sp.getString("domain", ""); }
+
+    public void setDomain(String d) { sp.edit().putString("domain", d.trim()).apply(); }
+
     public boolean ready() {
         return !host().isEmpty() && Crypto.fromHexOrB64(key()) != null;
     }
