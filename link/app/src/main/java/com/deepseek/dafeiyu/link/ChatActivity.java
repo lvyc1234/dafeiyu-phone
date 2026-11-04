@@ -428,6 +428,15 @@ public class ChatActivity extends Activity implements LinkService.Listener {
     }
 
     @Override
+    public void onSyncDone(int total) {
+        ui.post(() -> {
+            adapter.setAll(db.recent(500));
+            scrollBottom();
+            Toast.makeText(this, "已同步 " + total + " 条历史", Toast.LENGTH_SHORT).show();
+        });
+    }
+
+    @Override
     public void onLog(String line) {
         // 需要时打开 logcat 看
     }

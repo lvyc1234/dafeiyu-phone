@@ -11,11 +11,15 @@ import android.os.Build;
 import android.os.IBinder;
 import android.util.Log;
 
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.List;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -54,6 +58,7 @@ public class LinkService extends Service {
         void onMsg(Msg m);
         void onTyping(boolean on);
         void onLog(String line);
+        void onSyncDone(int total);
     }
 
     private static final CopyOnWriteArrayList<Listener> LISTENERS = new CopyOnWriteArrayList<>();
@@ -94,6 +99,8 @@ public class LinkService extends Service {
     private int state = ST_OFFLINE;
 
     private Prefs prefs;
+    private final List<Integer> pendingShards = new ArrayList<>();
+    private JSONArray targetHashes = null;
     private Db db;
 
     // ------------------------------------------------------------ lifecycle
@@ -210,6 +217,7 @@ public class LinkService extends Service {
         lastPingMs = System.currentTimeMillis();
 
         setState(ST_ONLINE, Crypto.fingerprint(psk));
+        startSync();
         log("已连接 " + host + ":" + port + "  fp=" + Crypto.fingerprint(psk));
 
         Thread reader = new Thread(() -> readLoop(in), "link-read");
@@ -241,6 +249,117 @@ public class LinkService extends Service {
             log("读线程退出: " + e.getMessage());
         } finally {
             closeSocket();
+        }
+    }
+
+    // ------------------------------------------------------------ 历史同步（200KB 分片 + MD5）
+    private File shardFile(int i) {
+        File d = new File(getFilesDir(), "sync");
+        if (!d.exists()) d.mkdirs();
+        return new File(d, "shard-" + i + ".json");
+    }
+
+    private void startSync() {
+        try {
+            JSONObject j = new JSONObject();
+            j.put("t", "sync_index");
+            Frame.write(out, session, Frame.T_JSON, j.toString().getBytes(StandardCharsets.UTF_8));
+            log("请求历史索引");
+        } catch (Exception e) {
+            log("同步请求失败: " + e.getMessage());
+        }
+    }
+
+    /** 对比分片 hash，只下载差异片；本地多出的片删除 */
+    private void onSyncIndex(JSONObject j) {
+        try {
+            JSONArray shards = j.optJSONArray("shards");
+            if (shards == null) return;
+            JSONArray local = null;
+            String saved = prefs.syncHashes();
+            if (saved != null && !saved.isEmpty()) {
+                try { local = new JSONArray(saved); } catch (Exception ignored) { }
+            }
+            pendingShards.clear();
+            for (int i = 0; i < shards.length(); i++) {
+                String h = shards.optString(i, "");
+                boolean same = local != null && i < local.length() && h.equals(local.optString(i, ""));
+                if (!same) pendingShards.add(i);
+            }
+            // 服务端片数变少 -> 删除本地多余的片
+            for (int i = shards.length(); ; i++) {
+                File f = shardFile(i);
+                if (!f.exists()) break;
+                f.delete();
+            }
+            targetHashes = shards;
+            log("同步: 服务端 " + j.optInt("total") + " 条 / " + shards.length()
+                    + " 片，需下载 " + pendingShards.size() + " 片");
+            if (pendingShards.isEmpty()) {
+                rebuildFromShards();
+            } else {
+                requestNextShard();
+            }
+        } catch (Exception e) {
+            log("同步索引处理失败: " + e.getMessage());
+        }
+    }
+
+    private void requestNextShard() {
+        try {
+            if (pendingShards.isEmpty()) {
+                prefs.saveSyncHashes(targetHashes == null ? "" : targetHashes.toString());
+                rebuildFromShards();
+                return;
+            }
+            int i = pendingShards.remove(0);
+            JSONObject j = new JSONObject();
+            j.put("t", "sync_get");
+            j.put("i", i);
+            Frame.write(out, session, Frame.T_JSON, j.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            log("请求分片失败: " + e.getMessage());
+        }
+    }
+
+    private void onSyncShard(JSONObject j) {
+        try {
+            int i = j.optInt("i");
+            JSONArray items = j.optJSONArray("items");
+            Util.writeAll(shardFile(i),
+                    (items == null ? "[]" : items.toString()).getBytes(StandardCharsets.UTF_8));
+            requestNextShard();
+        } catch (Exception e) {
+            log("分片落盘失败: " + e.getMessage());
+        }
+    }
+
+    /** 用本地所有分片重建消息表（以服务端为准，多删少补） */
+    private void rebuildFromShards() {
+        try {
+            List<Msg> all = new ArrayList<>();
+            for (int i = 0; ; i++) {
+                File f = shardFile(i);
+                if (!f.exists()) break;
+                JSONArray arr = new JSONArray(new String(Util.readAll(f), StandardCharsets.UTF_8));
+                for (int k = 0; k < arr.length(); k++) {
+                    JSONObject o = arr.optJSONObject(k);
+                    if (o == null) continue;
+                    Msg m = new Msg();
+                    m.ts = o.optLong("ts", Util.nowSec());
+                    m.type = o.optString("type", Msg.T_TEXT);
+                    m.body = o.optString("body", "");
+                    m.mine = "app".equals(o.optString("from"));
+                    m.state = Msg.S_SENT;
+                    all.add(m);
+                }
+            }
+            db.clear();
+            for (Msg m : all) db.insert(m);
+            log("历史已重建: " + all.size() + " 条");
+            for (Listener li : LISTENERS) li.onSyncDone(all.size());
+        } catch (Exception e) {
+            log("重建失败: " + e.getMessage());
         }
     }
 
@@ -297,6 +416,8 @@ public class LinkService extends Service {
         JSONObject j = new JSONObject(text);
         String t = j.optString("t");
 
+        if ("sync_index".equals(t)) { onSyncIndex(j); return; }
+        if ("sync_shard".equals(t)) { onSyncShard(j); return; }
         if ("text".equals(t) || "emoji".equals(t)) {
             Msg m = new Msg(false, t, j.optString("body"));
             m.ts = j.optLong("ts", Util.nowSec());
