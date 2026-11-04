@@ -1,0 +1,40 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.deepseek.dafeiyu.link'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.deepseek.dafeiyu.link"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+        }
+        release {
+            minifyEnabled false
+            // CI 用 debug 签名，产物能直接装；要正式发布换成自己的 keystore
+            signingConfig = signingConfigs.debug
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_11
+        targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    lint {
+        abortOnError = false
+        checkReleaseBuilds = false
+    }
+}
+
+// 纯 framework，不引 androidx；zxing core 用本地 jar，CI 不需要连 maven 拉 AAR
+dependencies {
+    implementation files('libs/core-3.5.3.jar')
+}

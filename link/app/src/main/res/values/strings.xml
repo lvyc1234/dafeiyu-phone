@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">大肥鱼 Link</string>
+    <string name="hint_input">说点什么…</string>
+    <string name="send">发送</string>
+    <string name="settings">设置</string>
+    <string name="scan">扫码</string>
+    <string name="connecting">连接中…</string>
+    <string name="offline">未连接</string>
+    <string name="hold_to_talk">按住说话</string>
+</resources>
