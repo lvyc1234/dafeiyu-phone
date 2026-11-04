@@ -37,16 +37,20 @@ public class DebugServer extends Thread {
         try {
             ss = new ServerSocket(PORT, 4, InetAddress.getByName("127.0.0.1"));
             while (running) {
-                Socket s = ss.accept();
-                try {
-                    handle(s);
-                } catch (Exception ignored) {
-                } finally {
+                final Socket s = ss.accept();
+                // 每个连接单独线程 + 读超时，避免一个不说话的客户端堵住 accept
+                new Thread(() -> {
                     try {
-                        s.close();
+                        s.setSoTimeout(5000);
+                        handle(s);
                     } catch (Exception ignored) {
+                    } finally {
+                        try {
+                            s.close();
+                        } catch (Exception ignored) {
+                        }
                     }
-                }
+                }, "link-debug-conn").start();
             }
         } catch (Exception ignored) {
         }
