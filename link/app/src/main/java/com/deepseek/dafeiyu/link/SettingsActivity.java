@@ -181,6 +181,21 @@ public class SettingsActivity extends Activity {
                 + "当前密钥指纹：" + fp);
     }
 
+    /** 把服务端需要的 key 一并写进去 */
+    private void saveServerConfig() {
+        try {
+            NodeRunner.writeConfig(this,
+                    Prefs.serverKey(this),
+                    Prefs.serverBase(this),
+                    Prefs.serverModel(this),
+                    key.getText().toString().trim(),
+                    Integer.parseInt(port.getText().toString().trim()),
+                    nick.getText().toString().trim());
+        } catch (Exception e) {
+            toast("写服务端配置失败: " + e.getMessage());
+        }
+    }
+
     private void save() {
         String h = host.getText().toString().trim();
         int p;
@@ -197,6 +212,9 @@ public class SettingsActivity extends Activity {
             return;
         }
         prefs.save(h, p, n, Crypto.b64(k));
+        saveServerConfig();
+        NodeRunner.stop();
+        new Thread(() -> NodeRunner.start(getApplicationContext()), "node-restart").start();
         toast("已保存，正在重连");
         LinkService.stop(this);
         LinkService.start(this);

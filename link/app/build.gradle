@@ -9,8 +9,8 @@ android {
         minSdk 26
         targetSdk 34
         // 每次改动都要往上加，否则装不上（覆盖安装要求 versionCode 更大或同签名）
-        versionCode 19
-        versionName "1.9.0"
+        versionCode 20
+        versionName "2.0.0"
     }
 
     // 固定签名：仓库里带一个专用 keystore，保证每次 CI 出来的包能覆盖安装
@@ -37,6 +37,17 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+    }
+
+    // 内置 node 运行时（jniLibs），别让 AGP strip 掉
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += '**/libnode.so'
+        }
+    }
+    androidResources {
+        noCompress += ['so']
     }
 
     lint {

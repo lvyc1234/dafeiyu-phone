@@ -46,6 +46,22 @@ public final class Prefs {
 
     public void saveSyncHashes(String json) { sp.edit().putString("syncHashes", json).commit(); }
 
+    public static String serverKey(android.content.Context c) {
+        return c.getSharedPreferences(F, android.content.Context.MODE_PRIVATE).getString("serverKey", "");
+    }
+
+    public static String serverBase(android.content.Context c) {
+        return c.getSharedPreferences(F, android.content.Context.MODE_PRIVATE)
+                .getString("serverBase", "https://opencode.ai/zen/go/v1");
+    }
+
+    public static String serverModel(android.content.Context c) {
+        return c.getSharedPreferences(F, android.content.Context.MODE_PRIVATE)
+                .getString("serverModel", "deepseek-v4.1-flash");
+    }
+
+    public void setServerKey(String k) { sp.edit().putString("serverKey", k).apply(); }
+
     public boolean ready() {
         return !host().isEmpty() && Crypto.fromHexOrB64(key()) != null;
     }

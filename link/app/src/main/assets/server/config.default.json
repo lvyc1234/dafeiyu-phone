@@ -1,0 +1,26 @@
+{
+  "port": 9527,
+  "keyBase64": "",
+  "nick": "大肥鱼",
+  "apiKey": "",
+  "baseUrl": "https://opencode.ai/zen/go/v1",
+  "model": "deepseek-v4.1-flash",
+  "proactive": {
+    "minGapMin": 1,
+    "maxGapMin": 60,
+    "quietHours": [
+      1,
+      8
+    ],
+    "maxPerDay": 12
+  },
+  "life": {
+    "minGapMin": 10,
+    "maxGapMin": 20,
+    "quietHours": [
+      0,
+      8
+    ],
+    "enabled": true
+  }
+}
