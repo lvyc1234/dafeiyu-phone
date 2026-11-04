@@ -241,10 +241,10 @@ public class SettingsActivity extends Activity {
     /** 服务端视角的连接串：域名优先，拿不到就用本机 IPv6 */
     private String buildServerLink() {
         org.json.JSONObject c = NodeRunner.readServerConfig(this);
-        String host = c == null ? "" : c.optString("domain", "").trim();
-        if (host.isEmpty()) host = NodeRunner.localIpv6();
-        if (host.isEmpty()) host = host.getText().toString().trim();
-        if (host.isEmpty() || host.equals("connect")) {
+        String target = c == null ? "" : c.optString("domain", "").trim();
+        if (target.isEmpty()) target = NodeRunner.localIpv6();
+        if (target.isEmpty() && this.host != null) target = this.host.getText().toString().trim();
+        if (target.isEmpty() || target.equals("connect")) {
             toast("服务端还没启动，稍等几秒再试");
             return null;
         }
@@ -257,7 +257,7 @@ public class SettingsActivity extends Activity {
         }
         int p = c == null ? Prefs.DEFAULT_PORT : c.optInt("port", Prefs.DEFAULT_PORT);
         String nk = c == null ? "大肥鱼" : c.optString("nick", "大肥鱼");
-        return "dafeiyu://connect?h=" + Uri.encode(host)
+        return "dafeiyu://connect?h=" + Uri.encode(target)
                 + "&p=" + p
                 + "&k=" + Uri.encode(Crypto.b64(kraw))
                 + "&n=" + Uri.encode(nk);
