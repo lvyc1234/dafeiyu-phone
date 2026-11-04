@@ -171,15 +171,23 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         });
     }
 
+    /** 唯一发消息入口：db 与 UI 都交给 LinkService.enqueue 处理，避免插两次、显示两条 */
+    private void submit(Msg m) {
+        LinkService s = LinkService.get();
+        if (s != null) {
+            s.enqueue(m);
+        } else {
+            db.insert(m);
+            adapter.add(m);
+        }
+    }
+
     private void sendText() {
         String t = input.getText().toString().trim();
         if (t.isEmpty()) return;
         Msg m = new Msg(true, Msg.T_TEXT, t);
-        db.insert(m);
-        adapter.add(m);
         input.setText("");
-        LinkService s = LinkService.get();
-        if (s != null) s.enqueue(m);
+        submit(m);
         scrollBottom();
     }
 
@@ -205,10 +213,7 @@ public class ChatActivity extends Activity implements LinkService.Listener {
             tv.setLayoutParams(lp);
             tv.setOnClickListener(v -> {
                 Msg m = new Msg(true, Msg.T_EMOJI, e);
-                db.insert(m);
-                adapter.add(m);
-                LinkService s = LinkService.get();
-                if (s != null) s.enqueue(m);
+                submit(m);
                 scrollBottom();
             });
             emojiGrid.addView(tv);
@@ -234,10 +239,7 @@ public class ChatActivity extends Activity implements LinkService.Listener {
             Util.writeAll(f, jpeg);
             Msg m = new Msg(true, Msg.T_IMAGE, "");
             m.path = f.getAbsolutePath();
-            db.insert(m);
-            adapter.add(m);
-            LinkService s = LinkService.get();
-            if (s != null) s.enqueue(m);
+            submit(m);
             scrollBottom();
         } catch (Exception e) {
             Toast.makeText(this, "发送失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -291,10 +293,7 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         Msg m = new Msg(true, Msg.T_VOICE, "");
         m.path = f.getAbsolutePath();
         m.dur = Math.max(1, sec);
-        db.insert(m);
-        adapter.add(m);
-        LinkService s = LinkService.get();
-        if (s != null) s.enqueue(m);
+        submit(m);
         scrollBottom();
     }
 
