@@ -31,7 +31,7 @@ jobs:
         working-directory: link
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Collect APK (flat name)
+      - name: Collect APK with flat name
         run: |
           mkdir -p out
           cp link/app/build/outputs/apk/debug/app-debug.apk out/DafeiyuLink-debug.apk
@@ -39,7 +39,7 @@ jobs:
           sha256sum out/DafeiyuLink-debug.apk
 
       # 直接把 apk 挂到 release，点链接就是 apk，不是 zip
-      - name: Publish APK to release (tag: latest)
+      - name: Publish APK to release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
