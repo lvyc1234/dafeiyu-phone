@@ -443,7 +443,10 @@ public class LinkService extends Service {
         if ("sync_index".equals(t)) { onSyncIndex(j); return; }
         if ("sync_shard".equals(t)) { onSyncShard(j); return; }
         if ("text".equals(t) || "emoji".equals(t)) {
-            Msg m = new Msg(false, t, j.optString("body"));
+            // from=app/web 都是主人自己发的；只有 bot 才是左侧“对方”
+            String from = j.optString("from", "bot");
+            boolean mine = "app".equals(from) || "web".equals(from);
+            Msg m = new Msg(mine, t, j.optString("body"));
             m.ts = j.optLong("ts", Util.nowSec());
             db.insert(m);
             notifyMsg(m);
