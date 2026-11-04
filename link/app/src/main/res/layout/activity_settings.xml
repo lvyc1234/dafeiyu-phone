@@ -10,6 +10,53 @@
         android:orientation="vertical"
         android:padding="16dp">
 
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="或粘贴连接串"
+            android:textColor="@color/sub"
+            android:textSize="12sp"
+            android:layout_marginBottom="6dp" />
+
+        <EditText
+            android:id="@+id/linkStr"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_input"
+            android:hint="dafeiyu://connect?h=…&p=9527&k=…&n=…"
+            android:inputType="text"
+            android:minLines="2"
+            android:gravity="top"
+            android:padding="10dp"
+            android:textSize="11sp" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="14dp"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btnImportStr"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:background="@drawable/bg_send"
+                android:text="导入连接串"
+                android:textColor="#FFFFFFFF" />
+
+            <Button
+                android:id="@+id/btnPaste"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:layout_marginStart="8dp"
+                android:background="@drawable/bg_send"
+                android:text="从剪贴板粘贴"
+                android:textColor="#FFFFFFFF" />
+        </LinearLayout>
+
         <Button
             android:id="@+id/btnScanIn"
             android:layout_width="match_parent"

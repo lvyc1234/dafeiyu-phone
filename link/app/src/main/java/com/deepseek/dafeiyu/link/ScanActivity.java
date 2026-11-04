@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
@@ -14,6 +15,7 @@ import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
 import android.media.Image;
 import android.media.ImageReader;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.HandlerThread;
@@ -21,16 +23,19 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/** Camera2 + zxing：取 Y 平面直接解码，不做整帧转 Bitmap */
+/** Camera2 + zxing 扫码；也支持从相册选图识别 */
 public class ScanActivity extends Activity implements TextureView.SurfaceTextureListener {
 
     private static final int W = 1280;
     private static final int H = 720;
     private static final int REQ_CAM = 31;
+    private static final int REQ_ALBUM = 32;
 
     private TextureView preview;
     private HandlerThread bgThread;
@@ -49,6 +54,9 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
         bgThread = new HandlerThread("scan");
         bgThread.start();
         bg = new Handler(bgThread.getLooper());
+
+        findViewById(R.id.btnAlbum).setOnClickListener(v -> pickFromAlbum());
+        findViewById(R.id.btnCancel).setOnClickListener(v -> finish());
     }
 
     @Override
@@ -75,11 +83,51 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
     @Override
     public void onRequestPermissionsResult(int req, String[] p, int[] r) {
         super.onRequestPermissionsResult(req, p, r);
-        if (req == REQ_CAM && r.length > 0 && r[0] == PackageManager.PERMISSION_GRANTED) {
-            openCamera();
-        } else {
-            Toast.makeText(this, "没相机权限", Toast.LENGTH_SHORT).show();
-            finish();
+        if (req == REQ_CAM) {
+            if (r.length > 0 && r[0] == PackageManager.PERMISSION_GRANTED) {
+                openCamera();
+            } else {
+                Toast.makeText(this, "没相机权限，可以从相册选图", Toast.LENGTH_LONG).show();
+            }
+        }
+    }
+
+    // ------------------------------------------------------------ 相册
+
+    private void pickFromAlbum() {
+        Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+        i.setType("image/*");
+        try {
+            startActivityForResult(Intent.createChooser(i, "选一张有二维码的图"), REQ_ALBUM);
+        } catch (Exception e) {
+            Toast.makeText(this, "打不开相册: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != REQ_ALBUM || res != RESULT_OK || data == null || data.getData() == null) return;
+        Uri uri = data.getData();
+        try {
+            byte[] raw;
+            try (InputStream in = getContentResolver().openInputStream(uri)) {
+                ByteArrayOutputStream bos = new ByteArrayOutputStream();
+                byte[] buf = new byte[8192];
+                int n;
+                while ((n = in.read(buf)) > 0) bos.write(buf, 0, n);
+                raw = bos.toByteArray();
+            }
+            Bitmap bmp = Util.decodeBytes(raw, 2000);
+            String text = QrUtil.decodeBitmap(bmp);
+            if (text == null || text.isEmpty()) {
+                Toast.makeText(this, "这张图里没找到二维码，换一张试试", Toast.LENGTH_LONG).show();
+                done.set(false);
+                return;
+            }
+            deliver(text);
+        } catch (Exception e) {
+            Toast.makeText(this, "读图失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -87,7 +135,9 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
 
     @Override
     public void onSurfaceTextureAvailable(SurfaceTexture st, int w, int h) {
-        openCamera();
+        if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+            openCamera();
+        }
     }
 
     @Override
@@ -102,7 +152,7 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
     // ------------------------------------------------------------ Camera2
 
     private void openCamera() {
-        if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) return;
+        if (device != null) return;
         CameraManager cm = (CameraManager) getSystemService(CAMERA_SERVICE);
         try {
             String pick = null;
@@ -115,7 +165,9 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
                 }
             }
             if (pick == null) {
-                pick = cm.getCameraIdList()[0];
+                String[] ids = cm.getCameraIdList();
+                if (ids.length == 0) return;
+                pick = ids[0];
             }
             cm.openCamera(pick, new CameraDevice.StateCallback() {
                 @Override
@@ -137,8 +189,7 @@ public class ScanActivity extends Activity implements TextureView.SurfaceTexture
                 }
             }, bg);
         } catch (Exception e) {
-            Toast.makeText(this, "打不开相机: " + e.getMessage(), Toast.LENGTH_LONG).show();
-            finish();
+            Toast.makeText(this, "打不开相机，可以从相册选图", Toast.LENGTH_LONG).show();
         }
     }
 

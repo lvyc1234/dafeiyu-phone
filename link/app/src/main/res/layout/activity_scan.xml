@@ -13,8 +13,39 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="center_horizontal|bottom"
-        android:layout_marginBottom="80dp"
-        android:text="把二维码放进框里"
+        android:layout_marginBottom="96dp"
+        android:text="把二维码放进框里，或从相册选"
         android:textColor="#FFFFFFFF"
         android:textSize="14sp" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:layout_marginBottom="28dp"
+        android:gravity="center"
+        android:orientation="horizontal">
+
+        <Button
+            android:id="@+id/btnAlbum"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/bg_send"
+            android:text="从相册选"
+            android:textColor="#FFFFFFFF" />
+
+        <Button
+            android:id="@+id/btnCancel"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:layout_marginEnd="24dp"
+            android:background="@drawable/bg_send"
+            android:text="取消"
+            android:textColor="#FFFFFFFF" />
+    </LinearLayout>
 </FrameLayout>

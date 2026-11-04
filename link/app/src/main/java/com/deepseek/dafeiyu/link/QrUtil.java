@@ -9,6 +9,7 @@ import com.google.zxing.DecodeHintType;
 import com.google.zxing.EncodeHintType;
 import com.google.zxing.MultiFormatReader;
 import com.google.zxing.PlanarYUVLuminanceSource;
+import com.google.zxing.RGBLuminanceSource;
 import com.google.zxing.Result;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.common.HybridBinarizer;
@@ -37,6 +38,25 @@ public final class QrUtil {
                 }
             }
             return Bitmap.createBitmap(px, size, size, Bitmap.Config.ARGB_8888);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 从相册图片解码：整张 Bitmap 转亮度矩阵 */
+    public static String decodeBitmap(android.graphics.Bitmap bmp) {
+        if (bmp == null) return null;
+        int w = bmp.getWidth(), h = bmp.getHeight();
+        int[] px = new int[w * h];
+        bmp.getPixels(px, 0, w, 0, 0, w, h);
+        try {
+            RGBLuminanceSource src = new RGBLuminanceSource(w, h, px);
+            BinaryBitmap bm = new BinaryBitmap(new HybridBinarizer(src));
+            Map<DecodeHintType, Object> hints = new EnumMap<>(DecodeHintType.class);
+            hints.put(DecodeHintType.CHARACTER_SET, "UTF-8");
+            hints.put(DecodeHintType.TRY_HARDER, Boolean.TRUE);
+            Result r = new MultiFormatReader().decode(bm, hints);
+            return r == null ? null : r.getText();
         } catch (Exception e) {
             return null;
         }
