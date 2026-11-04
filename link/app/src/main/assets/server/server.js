@@ -435,6 +435,15 @@ const server = net.createServer(sock => {
         tcpClients.add(client);
         sock.on('close', () => { tcpClients.delete(client); log('App 连接断开，当前 ' + tcpClients.size); });
         stage = 'frames';
+        // 告诉客户端的「我」是谁：配了域名就用域名，否则给当前检测到的地址
+        try {
+          sendJson({
+            t: 'hello',
+            domain: (CFG.domain || '').trim(),
+            port: CFG.port || 9527,
+            nick: CFG.nick || '大肥鱼',
+          });
+        } catch (e) { /* 忽略 */ }
         continue;
       }
       if (buf.length < 12) return;

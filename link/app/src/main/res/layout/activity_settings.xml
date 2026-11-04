@@ -75,14 +75,6 @@
             android:layout_marginBottom="6dp" />
 
         <EditText
-            android:id="@+id/domain"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:hint="固定域名（可选，填了就用它生成二维码/链接）"
-            android:inputType="textUri"
-            android:textSize="14sp" />
-
-        <EditText
             android:id="@+id/host"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"

@@ -506,6 +506,18 @@ public class LinkService extends Service {
         JSONObject j = new JSONObject(text);
         String t = j.optString("t");
 
+        if ("hello".equals(t)) {
+            // 服务端配了固定域名：把它存下来，下次直接用域名连，换 IP 也不用重新扫码
+            String dom = j.optString("domain", "").trim();
+            if (!dom.isEmpty()) {
+                String cur = prefs.host();
+                if (!dom.equals(cur)) {
+                    prefs.save(dom, prefs.port(), prefs.nick(), prefs.key());
+                    log("服务端域名已更新为 " + dom + "（下次用域名连）");
+                }
+            }
+            return;
+        }
         if ("sync_index".equals(t)) { onSyncIndex(j); return; }
         if ("sync_shard".equals(t)) { onSyncShard(j); return; }
         if ("text".equals(t) || "emoji".equals(t)) {
