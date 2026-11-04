@@ -7,6 +7,9 @@ on:
       - 'link/**'
       - '.github/workflows/build-link.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,14 +31,27 @@ jobs:
         working-directory: link
         run: gradle assembleDebug --no-daemon --stacktrace
 
-      - name: Collect APK
+      - name: Collect APK (flat name)
         run: |
           mkdir -p out
-          find link/app/build/outputs/apk -name '*.apk' -exec cp {} out/ \;
+          cp link/app/build/outputs/apk/debug/app-debug.apk out/DafeiyuLink-debug.apk
           ls -lh out
+          sha256sum out/DafeiyuLink-debug.apk
 
-      - uses: actions/upload-artifact@v4
+      # 直接把 apk 挂到 release，点链接就是 apk，不是 zip
+      - name: Publish APK to release (tag: latest)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view latest >/dev/null 2>&1 \
+            || gh release create latest --title "最新构建" --notes "自动构建产物，每次 push 覆盖同名文件"
+
+          # 把 APK 做成固定文件名，下载链接永远不变
+          gh release upload latest out/DafeiyuLink-debug.apk --clobber
+
+      - name: Backup as artifact (zip, 仅留档)
+        uses: actions/upload-artifact@v4
         with:
           name: dafeiyu-link-apk
-          path: out/*.apk
+          path: out/DafeiyuLink-debug.apk
           if-no-files-found: error
