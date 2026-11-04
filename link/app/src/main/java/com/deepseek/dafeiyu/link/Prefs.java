@@ -31,7 +31,7 @@ public final class Prefs {
     /** 上次同步时服务端返回的分片 hash 列表（JSON 数组字符串） */
     public String syncHashes() { return sp.getString("syncHashes", ""); }
 
-    public void saveSyncHashes(String json) { sp.edit().putString("syncHashes", json).apply(); }
+    public void saveSyncHashes(String json) { sp.edit().putString("syncHashes", json).commit(); }
 
     public boolean ready() {
         return !host().isEmpty() && Crypto.fromHexOrB64(key()) != null;
