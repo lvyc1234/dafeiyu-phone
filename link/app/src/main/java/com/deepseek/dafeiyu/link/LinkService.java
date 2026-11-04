@@ -2,6 +2,7 @@ package com.deepseek.dafeiyu.link;
 
 import android.app.Notification;
 import android.app.NotificationChannel;
+import android.app.PendingIntent;
 import android.app.NotificationManager;
 import android.app.Service;
 import android.content.Context;
@@ -37,6 +38,10 @@ public class LinkService extends Service {
 
     private static final String TAG = "LinkService";
     private static final String CH = "link";
+    private static final String CH_MSG = "link-msg";
+
+    /** Activity 是否在前台；在前台就不弹通知 */
+    public static volatile boolean appVisible = false;
     public static final int PORT_FALLBACK = Prefs.DEFAULT_PORT;
 
     public static final int ST_OFFLINE = 0;
@@ -472,6 +477,43 @@ public class LinkService extends Service {
 
     private void notifyMsg(Msg m) {
         for (Listener l : LISTENERS) l.onMsg(m);
+        if (m != null && !m.mine) notifyIncoming(m);
+    }
+
+    /** 后台时像 QQ 一样弹通知 */
+    private void notifyIncoming(Msg m) {
+        if (appVisible) return;
+        try {
+            String text;
+            if (Msg.T_IMAGE.equals(m.type)) text = "[图片]";
+            else if (Msg.T_VOICE.equals(m.type)) text = "[语音] " + m.dur + "″";
+            else text = m.body == null ? "" : m.body;
+            if (text.isEmpty()) return;
+
+            Intent open = new Intent(this, ChatActivity.class);
+            open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            int flags = PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) flags |= PendingIntent.FLAG_IMMUTABLE;
+            PendingIntent pi = PendingIntent.getActivity(this, 0, open, flags);
+
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                    ? new Notification.Builder(this, CH_MSG)
+                    : new Notification.Builder(this);
+            b.setSmallIcon(android.R.drawable.stat_notify_chat)
+                    .setContentTitle(prefs.nick().isEmpty() ? "大肥鱼" : prefs.nick())
+                    .setContentText(text.length() > 80 ? text.substring(0, 80) + "…" : text)
+                    .setStyle(new Notification.BigTextStyle().bigText(text))
+                    .setAutoCancel(true)
+                    .setContentIntent(pi)
+                    .setDefaults(Notification.DEFAULT_ALL)
+                    .setPriority(Notification.PRIORITY_HIGH);
+            if (Build.VERSION.SDK_INT >= 21) b.setCategory(Notification.CATEGORY_MESSAGE);
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            nm.notify((int) (System.currentTimeMillis() & 0x7fffffff), b.build());
+            log("通知已弹出: " + text.substring(0, Math.min(40, text.length())));
+        } catch (Exception e) {
+            log("通知失败: " + e.getMessage());
+        }
     }
 
     private void log(String s) {
@@ -498,6 +540,15 @@ public class LinkService extends Service {
                     NotificationManager.IMPORTANCE_LOW);
             c.setShowBadge(false);
             nm.createNotificationChannel(c);
+
+            NotificationChannel m2 = new NotificationChannel(CH_MSG, "新消息",
+                    NotificationManager.IMPORTANCE_HIGH);
+            m2.setDescription("对端发来消息时提醒");
+            m2.enableVibration(true);
+            m2.setVibrationPattern(new long[]{0, 120, 80, 120});
+            m2.setShowBadge(true);
+            m2.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            nm.createNotificationChannel(m2);
         }
     }
 

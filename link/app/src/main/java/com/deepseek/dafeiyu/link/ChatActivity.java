@@ -108,7 +108,14 @@ public class ChatActivity extends Activity implements LinkService.Listener {
     @Override
     protected void onResume() {
         super.onResume();
+        LinkService.appVisible = true;
         syncServiceState();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        LinkService.appVisible = false;
     }
 
     /** Activity 重建后，状态栏需要主动跟服务对齐一次 */
