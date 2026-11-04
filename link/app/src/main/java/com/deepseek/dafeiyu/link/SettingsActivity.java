@@ -238,12 +238,34 @@ public class SettingsActivity extends Activity {
                 + "&n=" + Uri.encode(n.isEmpty() ? "我" : n);
     }
 
-    private void showQr() {
-        String content = buildLink();
-        if (content == null) {
-            toast("先填地址和密钥");
-            return;
+    /** 服务端视角的连接串：域名优先，拿不到就用本机 IPv6 */
+    private String buildServerLink() {
+        org.json.JSONObject c = NodeRunner.readServerConfig(this);
+        String host = c == null ? "" : c.optString("domain", "").trim();
+        if (host.isEmpty()) host = NodeRunner.localIpv6();
+        if (host.isEmpty()) host = host.getText().toString().trim();
+        if (host.isEmpty() || host.equals("connect")) {
+            toast("服务端还没启动，稍等几秒再试");
+            return null;
         }
+        String kb = c == null ? "" : c.optString("keyBase64", "").trim();
+        if (kb.isEmpty()) kb = key.getText().toString().trim();
+        byte[] kraw = Crypto.fromHexOrB64(kb);
+        if (kraw == null) {
+            toast("服务端密钥还没生成");
+            return null;
+        }
+        int p = c == null ? Prefs.DEFAULT_PORT : c.optInt("port", Prefs.DEFAULT_PORT);
+        String nk = c == null ? "大肥鱼" : c.optString("nick", "大肥鱼");
+        return "dafeiyu://connect?h=" + Uri.encode(host)
+                + "&p=" + p
+                + "&k=" + Uri.encode(Crypto.b64(kraw))
+                + "&n=" + Uri.encode(nk);
+    }
+
+    private void showQr() {
+        String content = buildServerLink();
+        if (content == null) return;
         Bitmap qr = QrUtil.make(content, 720);
         if (qr == null) {
             toast("生成二维码失败");

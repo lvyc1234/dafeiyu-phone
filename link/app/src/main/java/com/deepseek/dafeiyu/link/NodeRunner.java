@@ -120,6 +120,39 @@ public final class NodeRunner {
         log("config.json 已更新");
     }
 
+    /** 读服务端 config.json：域名、密钥、端口、昵称 */
+    public static org.json.JSONObject readServerConfig(Context ctx) {
+        try {
+            File f = new File(ctx.getFilesDir(), "server/config.json");
+            if (!f.exists()) return null;
+            return new org.json.JSONObject(new String(
+                    java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8"));
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** 本机当前对外 IPv6（拿不到返回空） */
+    public static String localIpv6() {
+        try {
+            java.util.Enumeration<java.net.NetworkInterface> ifs = java.net.NetworkInterface.getNetworkInterfaces();
+            while (ifs.hasMoreElements()) {
+                java.net.NetworkInterface ni = ifs.nextElement();
+                if (!ni.isUp() || ni.isLoopback()) continue;
+                java.util.Enumeration<java.net.InetAddress> as = ni.getInetAddresses();
+                while (as.hasMoreElements()) {
+                    java.net.InetAddress a = as.nextElement();
+                    String s = a.getHostAddress();
+                    if (s != null && s.indexOf(':') > 0 && !s.startsWith("fe80")) {
+                        int pct = s.indexOf('%');
+                        return pct > 0 ? s.substring(0, pct) : s;
+                    }
+                }
+            }
+        } catch (Exception ignored) { }
+        return "";
+    }
+
     private static String readAll(File f) throws Exception {
         return new String(java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8");
     }
