@@ -106,6 +106,26 @@ public class ChatActivity extends Activity implements LinkService.Listener {
     }
 
     @Override
+    protected void onResume() {
+        super.onResume();
+        syncServiceState();
+    }
+
+    /** Activity 重建后，状态栏需要主动跟服务对齐一次 */
+    private void syncServiceState() {
+        LinkService s = LinkService.get();
+        if (s == null) return;
+        int st = s.state();
+        if (st == LinkService.ST_ONLINE) {
+            status.setText("在线");
+        } else if (st == LinkService.ST_CONNECTING) {
+            status.setText("连接中");
+        } else {
+            status.setText("未连接");
+        }
+    }
+
+    @Override
     protected void onDestroy() {
         LinkService.removeListener(this);
         stopPlayer();
