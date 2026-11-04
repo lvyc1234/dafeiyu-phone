@@ -23,7 +23,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:background="@drawable/bg_input"
-            android:hint="dafeiyu://connect?h=…&p=9527&k=…&n=…"
+            android:hint="dafeiyu://connect?h=…&amp;p=9527&amp;k=…&amp;n=…"
             android:inputType="text"
             android:minLines="2"
             android:gravity="top"
