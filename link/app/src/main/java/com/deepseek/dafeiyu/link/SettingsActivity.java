@@ -1,6 +1,7 @@
 package com.deepseek.dafeiyu.link;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.app.AlertDialog;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -12,6 +13,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 public class SettingsActivity extends Activity {
+
+    private static final int REQ_SCAN = 41;
 
     private EditText host, port, nick, key;
     private TextView tip;
@@ -41,8 +44,37 @@ public class SettingsActivity extends Activity {
 
         findViewById(R.id.btnShowQr).setOnClickListener(v -> showQr());
 
+        findViewById(R.id.btnScanIn).setOnClickListener(v ->
+                startActivityForResult(new Intent(this, ScanActivity.class), REQ_SCAN));
+
         findViewById(R.id.btnSave).setOnClickListener(v -> save());
         refreshTip();
+    }
+
+    @Override
+    protected void onActivityResult(int req, int res, android.content.Intent data) {
+        super.onActivityResult(req, res, data);
+        if (req != REQ_SCAN || res != RESULT_OK || data == null) return;
+        String text = data.getStringExtra("result");
+        if (text == null || !text.startsWith("dafeiyu://")) {
+            toast("二维码内容不对");
+            return;
+        }
+        try {
+            android.net.Uri u = android.net.Uri.parse(text);
+            host.setText(orEmpty(u.getQueryParameter("h")));
+            port.setText(orEmpty(u.getQueryParameter("p")));
+            key.setText(orEmpty(u.getQueryParameter("k")));
+            nick.setText(orEmpty(u.getQueryParameter("n")));
+            refreshTip();
+            save();
+        } catch (Exception e) {
+            toast("解析失败: " + e.getMessage());
+        }
+    }
+
+    private String orEmpty(String s) {
+        return s == null ? "" : s;
     }
 
     private void refreshTip() {

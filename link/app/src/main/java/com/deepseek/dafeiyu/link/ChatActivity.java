@@ -99,8 +99,8 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         LinkService.addListener(this);
         LinkService.start(this);
         if (!prefs.ready()) {
-            status.setText("先设置地址和密钥");
-            startActivity(new Intent(this, SettingsActivity.class));
+            status.setText("点右上角「扫码」");
+            Toast.makeText(this, "点右上角「扫码」，扫服务端生成的二维码", Toast.LENGTH_LONG).show();
         }
     }
 
