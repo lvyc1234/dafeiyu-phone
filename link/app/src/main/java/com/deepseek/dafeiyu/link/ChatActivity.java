@@ -314,10 +314,16 @@ public class ChatActivity extends Activity implements LinkService.Listener {
     private void applyScan(String text) {
         try {
             Uri u = Uri.parse(text);
-            String host = u.getHost();
+            // 注意：dafeiyu://connect?h=… 里 "connect" 是 authority，真正的地址在 h 参数里。
+            // 用 u.getHost() 会拿到 "connect" 这个字符串，连出去必然 DNS 失败。
+            String host = u.getQueryParameter("h");
             String port = u.getQueryParameter("p");
             String key = u.getQueryParameter("k");
             String nick = u.getQueryParameter("n");
+            if (host == null || host.isEmpty()) {
+                Toast.makeText(this, "连接串里没有地址（h 参数）", Toast.LENGTH_LONG).show();
+                return;
+            }
             prefs.save(host == null ? "" : host,
                     port == null ? Prefs.DEFAULT_PORT : Integer.parseInt(port),
                     nick == null ? "我" : nick,
