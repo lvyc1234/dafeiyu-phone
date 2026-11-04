@@ -22,4 +22,5 @@
     <string name="overlay_switch">显示悬浮窗</string>
     <string name="overlay_tip">第一次开启需要在系统设置里允许「显示在其他应用上层」。悬浮面板可拖动；点击进聊天，长按关闭。</string>
     <string name="overlay_denied">还没给悬浮窗权限，去系统设置里允许「显示在其他应用上层」</string>
+    <string name="a11y_desc">让大肥鱼读取屏幕上的控件，用文字定位按钮而不是截图猜坐标</string>
 </resources>

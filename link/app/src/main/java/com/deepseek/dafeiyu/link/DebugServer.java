@@ -109,6 +109,17 @@ public class DebugServer extends Thread {
                 out.println(svc.debugHistory(n));
                 break;
             }
+            case "NODES":
+                out.println(DafeiyuA11y.dumpNodes().toString());
+                break;
+            case "CLICK": {
+                boolean ok = DafeiyuA11y.clickByText(arg, false);
+                out.println("{\"ok\":" + ok + "}");
+                break;
+            }
+            case "A11Y":
+                out.println("{\"ok\":true,\"ready\":" + DafeiyuA11y.ready() + "}");
+                break;
             case "CLEAR":
                 svc.debugClear();
                 out.println("{\"ok\":true}");
