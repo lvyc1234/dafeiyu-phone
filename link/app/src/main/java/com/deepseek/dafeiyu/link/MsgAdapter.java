@@ -114,7 +114,8 @@ public class MsgAdapter extends BaseAdapter {
         if ("typing".equals(m.type)) {
             body.setVisibility(View.VISIBLE);
             body.setTextSize(13);
-            body.setText("● " + (m.body == null ? "正在输入…" : m.body));
+            String tt = (m.body == null || m.body.trim().isEmpty()) ? "正在输入…" : m.body;
+            body.setText("● " + tt);
             body.setTextColor(0xFF888888);
             bubble.setBackgroundResource(R.drawable.bubble_theirs);
             time.setText("");
