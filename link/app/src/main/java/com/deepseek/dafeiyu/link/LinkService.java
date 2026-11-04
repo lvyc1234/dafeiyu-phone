@@ -259,6 +259,30 @@ public class LinkService extends Service {
         return new File(d, "shard-" + i + ".json");
     }
 
+    private File hashFile() {
+        File d = new File(getFilesDir(), "sync");
+        if (!d.exists()) d.mkdirs();
+        return new File(d, "hashes.json");
+    }
+
+    private String loadHashes() {
+        try {
+            return hashFile().exists()
+                    ? new String(Util.readAll(hashFile()), StandardCharsets.UTF_8) : "";
+        } catch (Exception e) {
+            return "";
+        }
+    }
+
+    private void saveHashes(String json) {
+        try {
+            Util.writeAll(hashFile(), json.getBytes(StandardCharsets.UTF_8));
+            log("分片 hash 已保存: " + json.length() + " 字节");
+        } catch (Exception e) {
+            log("hash 保存失败: " + e.getMessage());
+        }
+    }
+
     private void startSync() {
         try {
             JSONObject j = new JSONObject();
@@ -276,7 +300,7 @@ public class LinkService extends Service {
             JSONArray shards = j.optJSONArray("shards");
             if (shards == null) return;
             JSONArray local = null;
-            String saved = prefs.syncHashes();
+            String saved = loadHashes();
             if (saved != null && !saved.isEmpty()) {
                 try { local = new JSONArray(saved); } catch (Exception ignored) { }
             }
@@ -308,7 +332,7 @@ public class LinkService extends Service {
     private void requestNextShard() {
         try {
             if (pendingShards.isEmpty()) {
-                prefs.saveSyncHashes(targetHashes == null ? "" : targetHashes.toString());
+                saveHashes(targetHashes == null ? "[]" : targetHashes.toString());
                 rebuildFromShards();
                 return;
             }
