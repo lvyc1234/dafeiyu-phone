@@ -8,18 +8,29 @@ android {
         applicationId "com.deepseek.dafeiyu.link"
         minSdk 26
         targetSdk 34
-        versionCode 1
-        versionName "1.0.0"
+        // 每次改动都要往上加，否则装不上（覆盖安装要求 versionCode 更大或同签名）
+        versionCode 5
+        versionName "1.1.0"
+    }
+
+    // 固定签名：仓库里带一个专用 keystore，保证每次 CI 出来的包能覆盖安装
+    signingConfigs {
+        fixed {
+            storeFile file('../keystore/dafeiyu.jks')
+            storePassword 'dafeiyu2026'
+            keyAlias 'dafeiyu'
+            keyPassword 'dafeiyu2026'
+        }
     }
 
     buildTypes {
         debug {
             minifyEnabled false
+            signingConfig = signingConfigs.fixed
         }
         release {
             minifyEnabled false
-            // CI 用 debug 签名，产物能直接装；要正式发布换成自己的 keystore
-            signingConfig = signingConfigs.debug
+            signingConfig = signingConfigs.fixed
         }
     }
 
@@ -34,7 +45,6 @@ android {
     }
 }
 
-// 纯 framework，不引 androidx；zxing core 用本地 jar，CI 不需要连 maven 拉 AAR
 dependencies {
     implementation files('libs/core-3.5.3.jar')
 }

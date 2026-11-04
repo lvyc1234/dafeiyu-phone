@@ -64,6 +64,7 @@ public class ChatActivity extends Activity implements LinkService.Listener {
     private VoiceRecorder recorder;
     private MediaPlayer player;
     private boolean emojiOpen;
+    private String lastErr = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -366,10 +367,14 @@ public class ChatActivity extends Activity implements LinkService.Listener {
                     status.setText("在线");
                     break;
                 case LinkService.ST_CONNECTING:
-                    status.setText("连接中");
+                    status.setText(detail == null || detail.isEmpty() ? "连接中" : "→ " + clip(detail, 22));
                     break;
                 case LinkService.ST_ERROR:
-                    status.setText("出错");
+                    status.setText("连接失败");
+                    if (detail != null && !detail.equals(lastErr)) {
+                        lastErr = detail;
+                        Toast.makeText(this, "连接失败: " + detail, Toast.LENGTH_LONG).show();
+                    }
                     break;
                 default:
                     status.setText("未连接");
@@ -384,6 +389,11 @@ public class ChatActivity extends Activity implements LinkService.Listener {
             adapter.add(m);
             scrollBottom();
         });
+    }
+
+    private static String clip(String s, int n) {
+        if (s == null) return "";
+        return s.length() <= n ? s : s.substring(0, n) + "…";
     }
 
     @Override

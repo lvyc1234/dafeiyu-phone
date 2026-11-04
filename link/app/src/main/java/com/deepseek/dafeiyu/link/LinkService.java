@@ -152,7 +152,9 @@ public class LinkService extends Service {
             try {
                 connectOnce();
             } catch (Exception e) {
-                log("连接中断: " + e.getMessage());
+                String msg = e.getClass().getSimpleName() + ": " + e.getMessage();
+                log("连接中断: " + msg);
+                setState(ST_ERROR, msg);
             } finally {
                 closeSocket();
             }
