@@ -181,21 +181,6 @@ public class SettingsActivity extends Activity {
                 + "当前密钥指纹：" + fp);
     }
 
-    /** 把服务端需要的 key 一并写进去 */
-    private void saveServerConfig() {
-        try {
-            NodeRunner.writeConfig(this,
-                    Prefs.serverKey(this),
-                    Prefs.serverBase(this),
-                    Prefs.serverModel(this),
-                    key.getText().toString().trim(),
-                    Integer.parseInt(port.getText().toString().trim()),
-                    nick.getText().toString().trim());
-        } catch (Exception e) {
-            toast("写服务端配置失败: " + e.getMessage());
-        }
-    }
-
     private void save() {
         String h = host.getText().toString().trim();
         int p;
@@ -212,9 +197,6 @@ public class SettingsActivity extends Activity {
             return;
         }
         prefs.save(h, p, n, Crypto.b64(k));
-        saveServerConfig();
-        NodeRunner.stop();
-        new Thread(() -> NodeRunner.start(getApplicationContext()), "node-restart").start();
         toast("已保存，正在重连");
         LinkService.stop(this);
         LinkService.start(this);
@@ -237,35 +219,9 @@ public class SettingsActivity extends Activity {
                 + "&k=" + Uri.encode(Crypto.b64(k))
                 + "&n=" + Uri.encode(n.isEmpty() ? "我" : n);
     }
-
-    /** 服务端视角的连接串：域名优先，拿不到就用本机 IPv6 */
-    private String buildServerLink() {
-        org.json.JSONObject c = NodeRunner.readServerConfig(this);
-        String target = c == null ? "" : c.optString("domain", "").trim();
-        if (target.isEmpty()) target = NodeRunner.localIpv6();
-        if (target.isEmpty() && this.host != null) target = this.host.getText().toString().trim();
-        if (target.isEmpty() || target.equals("connect")) {
-            toast("服务端还没启动，稍等几秒再试");
-            return null;
-        }
-        String kb = c == null ? "" : c.optString("keyBase64", "").trim();
-        if (kb.isEmpty()) kb = key.getText().toString().trim();
-        byte[] kraw = Crypto.fromHexOrB64(kb);
-        if (kraw == null) {
-            toast("服务端密钥还没生成");
-            return null;
-        }
-        int p = c == null ? Prefs.DEFAULT_PORT : c.optInt("port", Prefs.DEFAULT_PORT);
-        String nk = c == null ? "大肥鱼" : c.optString("nick", "大肥鱼");
-        return "dafeiyu://connect?h=" + Uri.encode(target)
-                + "&p=" + p
-                + "&k=" + Uri.encode(Crypto.b64(kraw))
-                + "&n=" + Uri.encode(nk);
-    }
-
     private void showQr() {
-        String content = buildServerLink();
-        if (content == null) return;
+        String content = buildLink();
+        if (content == null) { toast("先填地址和密钥"); return; }
         Bitmap qr = QrUtil.make(content, 720);
         if (qr == null) {
             toast("生成二维码失败");

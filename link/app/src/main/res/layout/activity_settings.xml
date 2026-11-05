@@ -58,6 +58,13 @@
         </LinearLayout>
 
         <Button
+            android:id="@+id/btnShowQr"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="生成二维码" />
+
+
+        <Button
             android:id="@+id/btnScanIn"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -138,16 +145,6 @@
                 android:layout_weight="1"
                 android:background="@drawable/bg_send"
                 android:text="随机生成"
-                android:textColor="#FFFFFFFF" />
-
-            <Button
-                android:id="@+id/btnShowQr"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="8dp"
-                android:background="@drawable/bg_send"
-                android:text="显示二维码"
                 android:textColor="#FFFFFFFF" />
         </LinearLayout>
 

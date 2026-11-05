@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">大肥鱼服务端</string>
+    <string name="a11y_desc">让大肥鱼读取屏幕控件，用文字定位按钮而不是截图猜坐标</string>
+</resources>

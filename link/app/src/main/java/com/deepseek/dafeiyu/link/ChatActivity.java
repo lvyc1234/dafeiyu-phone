@@ -100,11 +100,6 @@ public class ChatActivity extends Activity implements LinkService.Listener {
         requestNeededPermissions();
         checkOverlayPermission();
 
-        // 内置服务端：装完即用，不用外面再起 node
-        if (!NodeRunner.isRunning()) {
-            new Thread(() -> NodeRunner.start(getApplicationContext()), "node-boot").start();
-        }
-
         LinkService.addListener(this);
         LinkService.start(this);
         if (!prefs.ready()) {

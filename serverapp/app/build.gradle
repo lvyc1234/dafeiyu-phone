@@ -1,0 +1,53 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.deepseek.dafeiyu.server'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.deepseek.dafeiyu.server"
+        minSdk 26
+        targetSdk 34
+        versionCode 1
+        versionName "1.0.0"
+        ndk { abiFilters 'arm64-v8a' }
+    }
+
+    signingConfigs {
+        fixed {
+            storeFile file('../keystore/dafeiyu.jks')
+            storePassword 'dafeiyu2026'
+            keyAlias 'dafeiyu'
+            keyPassword 'dafeiyu2026'
+        }
+    }
+
+    buildTypes {
+        debug {
+            minifyEnabled false
+            signingConfig = signingConfigs.fixed
+        }
+        release {
+            minifyEnabled false
+            signingConfig = signingConfigs.fixed
+        }
+    }
+
+    // 内置 node 运行时：别 strip、别压缩，否则跑不起来
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            keepDebugSymbols += '**/libnode.so'
+        }
+    }
+    androidResources { noCompress += ['so'] }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_11
+        targetCompatibility JavaVersion.VERSION_11
+    }
+}
+
+dependencies {
+    implementation files('libs/core-3.5.3.jar')
+}
