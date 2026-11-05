@@ -56,6 +56,10 @@ const mem = require('./memory.js');
 let nodes = null;
 try { nodes = require('./nodes.js'); } catch (e) { log('[nodes] 未加载: ' + e.message); }
 const life = require('./life.js');
+let bili = null;
+try { bili = require('./bilibili.js'); } catch (e) { /* 忽略 */ }
+let storage = null;
+try { storage = require('./storage.js'); } catch (e) { /* 忽略 */ }
 mem.ROOT = GIRL;
 const HISTORY_DIR = path.join(ROOT, 'history');
 fs.mkdirSync(HISTORY_DIR, { recursive: true });
@@ -408,7 +412,7 @@ const server = net.createServer(sock => {
   }
   const sendJson = obj => sendRaw(1, Buffer.from(JSON.stringify(obj), 'utf8'));
 
-  sock.on('data', chunk => {
+  sock.on('data', async chunk => {
     buf = Buffer.concat([buf, chunk]);
     for (;;) {
       if (stage === 'hello') {
@@ -471,6 +475,27 @@ const server = net.createServer(sock => {
         const arr = syncShard(i);
         log('[sync] 下发分片 ' + i + ' (' + (arr ? arr.length : 0) + ' 条)');
         sendJson({ t: 'sync_shard', i: i, items: arr || [] });
+        continue;
+      }
+      if (j.t === 'bili') {
+        // 手动让她刷一次 B 站
+        if (!bili) { sendJson({ t: 'text', from: 'bot', body: 'B站模块没加载', ts: Math.floor(Date.now()/1000) }); continue; }
+        try {
+          if (bili.ROOT !== GIRL) bili.ROOT = GIRL;
+          const w = await bili.watchOne((pr) => llmReply(pr));
+          const msg = '刚在B站看了《' + w.title + '》\n' + w.comment + '\n' + w.link;
+          for (const c of tcpClients) { try { c.sendJson({ t: 'text', from: 'bot', body: msg, ts: Math.floor(Date.now()/1000) }); } catch (e) {} }
+          if (webBridge) { try { webBridge.broadcast({ t: 'text', from: 'bot', body: msg, ts: Math.floor(Date.now()/1000) }); } catch (e) {} }
+          appendMessage({ from: 'bot', type: 'text', body: msg });
+          pushHist('assistant', msg);
+        } catch (e) { log('[bili] 失败: ' + e.message); }
+        continue;
+      }
+      if (j.t === 'storage') {
+        try {
+          const i = storage ? storage.info(GIRL) : { text: '存储模块没加载' };
+          sendJson({ t: 'text', from: 'bot', body: i.text, ts: Math.floor(Date.now()/1000) });
+        } catch (e) { /* 忽略 */ }
         continue;
       }
       if (j.t === 'text' || j.t === 'emoji') {

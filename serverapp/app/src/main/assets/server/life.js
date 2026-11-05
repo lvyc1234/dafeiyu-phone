@@ -17,9 +17,11 @@
  * 边界：动作清单里没有任何支付/银行/验证码/删文件/发消息；开 App 前过包名黑名单。
  */
 'use strict';
+const path = require('node:path');
+let biliApi = null;
+try { biliApi = require('./bilibili.js'); } catch (e) { /* 没装就退回读屏 */ }
 
 const fs = require('node:fs');
-const path = require('node:path');
 
 // ---------------------------------------------------------------- 路径（可用 config.home 覆盖，便于自测）
 const DEFAULT_HOME = '/sdcard/DeepSeekGirl/';
@@ -375,8 +377,32 @@ async function safe(fn, fallback) {
 async function actBrowseBili(ctx) {
   const { deps, cfg, minutes, nap } = ctx;
   const nodes = deps.nodes;
-  if (!nodes || typeof nodes.openApp !== 'function') return { ok: false, detail: '没有 nodes.openApp，开不了b站' };
 
+  // ① 优先走真实 B 站接口：挑一个视频，读标题/简介/字幕/热门评论，让她说看懂了什么
+  if (biliApi) {
+    try {
+      if (biliApi.ROOT !== cfg.home) biliApi.ROOT = cfg.home;
+      const w = await biliApi.watchOne((prompt) => deps.llm(prompt, Object.assign({ kind: 'life' }, cfg.llmOpts)));
+      const what = '在B站看了《' + w.title + '》（UP：' + (w.owner || '未知') + '）\n我：' + w.comment;
+      const diaryFile = appendDiary(cfg, what, 'bili');
+      memAppend(deps, 'assistant', what, 'bili');
+      // 顺便真的把 App 打开，屏幕上有画面，主人点开能看到
+      if (nodes && typeof nodes.openApp === 'function') {
+        await safe(() => nodes.openApp(cfg.biliPkg), null);
+        await nap(2500);
+      }
+      return {
+        ok: !!diaryFile,
+        detail: clip('B站《' + w.title + '》 ' + w.comment, 220),
+        data: { bvid: w.bvid, title: w.title, link: w.link },
+      };
+    } catch (e) {
+      nlog('[life] B站接口失败，退回读屏: ' + e.message);
+    }
+  }
+
+  // ② 退回：打开 App 读屏
+  if (!nodes || typeof nodes.openApp !== 'function') return { ok: false, detail: '没有 nodes.openApp，开不了b站' };
   const open = await safe(() => nodes.openApp(cfg.biliPkg), { err: 'openApp 抛错' });
   nlog('[life] 打开b站 -> ' + JSON.stringify(open).slice(0, 120));
   await nap(1500);
@@ -386,7 +412,6 @@ async function actBrowseBili(ctx) {
   const seen = [];
   for (let i = 0; i < swipes; i++) {
     await nap(Math.max(800, perSlice - 700));
-    // 滚一下（nodes 没有 scroll 就用 shell 注入手势）
     const dy = 700 + Math.floor(Math.random() * 300);
     if (typeof nodes.scroll === 'function') await safe(() => nodes.scroll('down'), null);
     else if (typeof deps.shell === 'function') await safe(() => deps.shell('input swipe 540 1600 540 ' + (1600 - dy) + ' ' + (260 + Math.floor(Math.random() * 160))), null);
