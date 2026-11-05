@@ -24,7 +24,7 @@ public final class Ocr {
 
     private static synchronized TextRecognizer get() {
         if (rec == null) {
-            rec = TextRecognition.getClient(ChineseTextRecognizerOptions.Builder().build());
+            rec = TextRecognition.getClient(new ChineseTextRecognizerOptions.Builder().build());
         }
         return rec;
     }
