@@ -49,5 +49,7 @@ android {
 }
 
 dependencies {
-    implementation files('libs/core-3.5.3.jar')
+    implementation files("libs/core-3.5.3.jar")
+    // 本地 OCR：画布/图片里的文字节点树读不到，用它兜底
+    implementation "com.google.mlkit:text-recognition-chinese:16.0.1"
 }

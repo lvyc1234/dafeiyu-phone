@@ -126,6 +126,41 @@ function openApp(pkg) {
   return { ok: s.code === 0, pkg, component: comp, out: (s.out || s.err).slice(0, 120) };
 }
 
+/** 截图 + 本地 OCR（画布/图片类页面节点树读不到时用） */
+function ocrScreen() {
+  try {
+    const out = '/data/local/tmp/ocr-' + Date.now() + '.png';
+    const r = sh('screencap -p ' + out + ' 2>/dev/null && ls -l ' + out);
+    if (r.code !== 0 || !r.out) return { ok: false, text: '', lines: [] };
+    // 交给服务端 App 的 OCR（通过 am start 触发，结果写进它的日志；这里用文件回读）
+    const res = sh('am start -n com.deepseek.dafeiyu.server/.MainActivity --es ocr ' + out + ' >/dev/null 2>&1');
+    // 同时用 DSH bridge 的 OCR（如果可用）
+    let lines = [];
+    try {
+      const j = JSON.parse(sh('curl -s --max-time 6 "http://127.0.0.1:3083/ocr?force=1"').out || '{}');
+      if (j && Array.isArray(j.blocks)) {
+        lines = j.blocks.map(b => ({ text: b.text, cx: b.cx, cy: b.cy }));
+      }
+    } catch (e) { /* 忽略 */ }
+    try { sh('rm -f ' + out); } catch (e) { /* 忽略 */ }
+    if (!lines.length) return { ok: false, text: '', lines: [] };
+    return { ok: true, text: lines.map(l => l.text).join('\n'), lines };
+  } catch (e) {
+    return { ok: false, text: '', lines: [] };
+  }
+}
+
+/** 按需读屏：节点树有文字就用节点树，没有就 OCR */
+function readScreen() {
+  const nodes = dump().filter(n => n.text && n.text.trim().length > 1);
+  if (nodes.length >= 3) {
+    return { source: 'nodes', text: nodes.map(n => n.text.trim()).join('\n'), count: nodes.length };
+  }
+  const o = ocrScreen();
+  if (o.ok) return { source: 'ocr', text: o.text, count: o.lines.length };
+  return { source: 'none', text: nodes.map(n => n.text.trim()).join('\n'), count: nodes.length };
+}
+
 function scroll(dir, times) {
   const n = Math.max(1, Number(times) || 1);
   const y1 = dir === 'up' ? 700 : 1700, y2 = dir === 'up' ? 1700 : 700;
@@ -133,4 +168,4 @@ function scroll(dir, times) {
   return { ok: true, times: n, dir: dir || 'down' };
 }
 
-module.exports = { dump, findByText, tapText, tapDesc, tapId, listApps, openApp, scroll, currentApp, ready, _sh: sh, _ask: ask };
+module.exports = { dump, findByText, tapText, tapDesc, tapId, listApps, openApp, scroll, currentApp, ready, ocrScreen, readScreen, _sh: sh, _ask: ask };

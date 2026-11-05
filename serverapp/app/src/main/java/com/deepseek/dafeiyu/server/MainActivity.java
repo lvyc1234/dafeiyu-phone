@@ -107,6 +107,7 @@ public class MainActivity extends Activity {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 11);
         }
         askAllFiles();
+        handleOcrIntent();
         startServer();
         tick();
     }
@@ -123,6 +124,28 @@ public class MainActivity extends Activity {
         } catch (Exception e) {
             logView.setText("请在系统设置里授予「所有文件访问权限」");
         }
+    }
+
+    /** 供外部通过 am start 触发一次 OCR：--es ocr <图片路径> 或 --ez shot true */
+    private void handleOcrIntent() {
+        android.content.Intent it = getIntent();
+        if (it == null) return;
+        String path = it.getStringExtra("ocr");
+        boolean shot = it.getBooleanExtra("shot", false);
+        if (shot) {
+            try {
+                Process pr = Runtime.getRuntime().exec(new String[]{
+                        "/system/bin/sh", "-c",
+                        "screencap -p /data/local/tmp/ocr-shot.png"});
+                pr.waitFor();
+                path = "/data/local/tmp/ocr-shot.png";
+            } catch (Exception e) {
+                logView.setText("截图失败: " + e.getMessage());
+            }
+        }
+        if (path == null || path.isEmpty()) return;
+        String t = Ocr.text(path);
+        logView.setText(t.isEmpty() ? "（没识别到文字）" : t);
     }
 
     private void startServer() {

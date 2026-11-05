@@ -30,6 +30,26 @@ import java.util.Locale;
  */
 public class GalleryActivity extends Activity {
 
+    /** 首次启动把内置的 93 张立绘解到 filesDir/gallery */
+    private void ensureFromAssets() {
+        File dst = new File(getFilesDir(), "gallery");
+        if (dst.exists() && dst.list() != null && dst.list().length > 0) return;
+        dst.mkdirs();
+        try {
+            String[] names = getAssets().list("gallery");
+            if (names == null) return;
+            for (String n : names) {
+                if (!n.toLowerCase().endsWith(".jpg")) continue;
+                try (java.io.InputStream in = getAssets().open("gallery/" + n);
+                     java.io.FileOutputStream out = new java.io.FileOutputStream(new File(dst, n))) {
+                    byte[] buf = new byte[8192];
+                    int r;
+                    while ((r = in.read(buf)) > 0) out.write(buf, 0, r);
+                }
+            }
+        } catch (Exception ignored) { }
+    }
+
     private static final String[] EXT = {".jpg", ".jpeg", ".png", ".webp"};
     private static final String AVATAR_FILE = "avatar_current.jpg";
     private static final int COLS = 3;
@@ -46,6 +66,7 @@ public class GalleryActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        ensureFromAssets();
         setContentView(R.layout.activity_gallery);
 
         grid = findViewById(R.id.grid);
