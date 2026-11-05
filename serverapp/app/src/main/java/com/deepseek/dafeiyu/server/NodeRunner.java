@@ -153,6 +153,27 @@ public final class NodeRunner {
         return "";
     }
 
+    /** 让服务端跑一个一次性动作（比如生成日记）—— 通过调试口发指令 */
+    public static void runOnce(Context ctx, String action) {
+        new Thread(() -> {
+            try (java.net.Socket sk = new java.net.Socket("127.0.0.1", 19528)) {
+                sk.setSoTimeout(3000);
+                sk.getOutputStream().write((action + "\n").getBytes("UTF-8"));
+            } catch (Exception e) {
+                log("runOnce 失败: " + e.getMessage());
+            }
+        }, "run-once").start();
+    }
+
+    /** 清空服务端消息库 */
+    public static void clearHistory(Context ctx) throws Exception {
+        File f = new File(ctx.getFilesDir(), "server/messages.jsonl");
+        if (f.exists()) f.delete();
+        File dir = new File(ctx.getFilesDir(), "server/history");
+        File[] all = dir.listFiles();
+        if (all != null) for (File x : all) x.delete();
+    }
+
     private static String readAll(File f) throws Exception {
         return new String(java.nio.file.Files.readAllBytes(f.toPath()), "UTF-8");
     }

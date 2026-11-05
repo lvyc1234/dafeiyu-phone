@@ -68,11 +68,15 @@ public class MainActivity extends Activity {
         stop.setText("停止");
         stop.setOnClickListener(v -> stopServer());
         Button mkQr = new Button(this);
-        mkQr.setText("生成二维码");
+        mkQr.setText("二维码");
         mkQr.setOnClickListener(v -> buildQr());
+        Button settings = new Button(this);
+        settings.setText("设置");
+        settings.setOnClickListener(v -> startActivity(new android.content.Intent(this, SettingsActivity.class)));
         btns.addView(start);
         btns.addView(stop);
         btns.addView(mkQr);
+        btns.addView(settings);
         root.addView(btns);
 
         apiKey = new EditText(this);
@@ -102,8 +106,23 @@ public class MainActivity extends Activity {
                 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
             requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 11);
         }
+        askAllFiles();
         startServer();
         tick();
+    }
+
+    /** 人设/记忆都放在 /sdcard/DeepSeekGirl，需要「所有文件访问」 */
+    private void askAllFiles() {
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= 30 && !android.os.Environment.isExternalStorageManager()) {
+                android.content.Intent i = new android.content.Intent(
+                        android.provider.Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                        android.net.Uri.parse("package:" + getPackageName()));
+                startActivity(i);
+            }
+        } catch (Exception e) {
+            logView.setText("请在系统设置里授予「所有文件访问权限」");
+        }
     }
 
     private void startServer() {
